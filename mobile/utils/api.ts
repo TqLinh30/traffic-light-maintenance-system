@@ -2,18 +2,29 @@ import { getApiUrl } from '../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 async function api<T>(url: string, options): Promise<T> {
-  return fetch(url, { headers: await authHeader(false), ...options }).then(
-    async (response) => {
-      if (!response.ok) {
-        if (response.status === 403) {
-          //TODO
-          // AsyncStorage.clear();
-        }
-        throw new Error(JSON.stringify(await response.json()));
+  try {
+    const response = await fetch(url, {
+      headers: await authHeader(false),
+      ...options
+    });
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        //TODO
+        // AsyncStorage.clear();
       }
-      return response.json() as Promise<T>;
+      throw new Error(JSON.stringify(await response.json()));
     }
-  );
+    return response.json() as Promise<T>;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/network request failed/i.test(message)) {
+      throw new Error(
+        `Network request failed while reaching ${url}. Check the Custom Server URL, backend availability, and device connectivity.`
+      );
+    }
+    throw error;
+  }
 }
 
 async function get<T>(url, options?) {

@@ -273,3 +273,167 @@
 ## Mobile Auth Diagnostics Residual Gaps
 - No automated or manual device validation yet confirms the fixed error message on a physical device.
 - `LoadBundleFromServerRequestError: Could not load bundle` remains an environment or Metro connectivity issue, not an app-code auth issue.
+
+## Local Backend Runtime Verification Performed
+- Docker PostgreSQL connectivity:
+  - `docker exec atlas_db_5433 sh -lc "PGPASSWORD=mypassword psql -U rootUser -d atlas -c 'SELECT 1;'" `
+  - result: passed
+- Backend startup:
+  - backend launched successfully with `DB_URL=localhost:5433/atlas` and supporting env vars
+  - result: passed
+- Runtime confirmation:
+  - log contains `Started ApiApplication`
+  - backend process remains running on `8080`
+
+## Local Backend Runtime Notes
+- The workstation already runs a native `postgresql-x64-15` service on `5432`, which could not be stopped from the current session.
+- The project backend was therefore started against a separate Docker PostgreSQL container published on `5433`.
+- `http://localhost:8080/swagger-ui/index.html` currently responds with `403`, but the Spring Boot process is fully started and serving requests.
+
+## Mobile Dev-Client Runtime Verification Performed
+- Metro reachability on the workstation:
+  - `Get-NetTCPConnection -LocalPort 8081 -State Listen`
+  - result: Metro is listening locally on `8081`
+- Metro status endpoint:
+  - `Invoke-WebRequest http://localhost:8081/status`
+  - `Invoke-WebRequest http://192.168.0.103:8081/status`
+  - result: both return `packager-status:running`
+- Custom Server screen code-path review:
+  - `mobile/screens/auth/CustomServerScreen.tsx`
+  - result: screen only saves `customApiUrl` to `AsyncStorage` and does not make network or bundle-loading calls
+
+## Mobile Dev-Client Runtime Notes
+- `LoadBundleFromServerRequestError: Could not load bundle` is a Metro or Expo dev-client connectivity issue, not a backend API issue.
+- During physical-device testing with `npx expo start --dev-client --host lan`, the device must be able to reach:
+  - backend API on `http://<host-lan-ip>:8080`
+  - Metro bundle server on `http://<host-lan-ip>:8081`
+- The `Custom Server` screen configures only the backend API URL and cannot fix a Metro bundle-loading failure by itself.
+
+## Mobile Physical-Device Follow-Up Verification Performed
+- ADB connectivity:
+  - `adb devices -l`
+  - result: physical Android device `SM_N981N` is connected and authorized
+- USB reverse tunneling:
+  - `adb reverse tcp:8081 tcp:8081`
+  - `adb reverse tcp:8080 tcp:8080`
+  - result: device can access host Metro and backend through `127.0.0.1`
+- Device logcat root-cause capture:
+  - launching the app and opening the `Custom Server` path produced `LoadBundleFromServerRequestError`
+  - logged URL contained `screens\\auth\\CustomServerScreen.bundle`
+  - result: root cause identified as a Windows path separator issue in a lazy-loaded split bundle
+- Post-fix verification:
+  - removed `React.lazy(...)` for `CustomServerScreen` in mobile navigation
+  - relaunched the app via `adb` with `exp+atlas-cmms://expo-development-client/?url=http://127.0.0.1:8081`
+  - result: the previous `CustomServerScreen.bundle` load error no longer reappeared in logcat
+- Device storage stabilization for USB testing:
+  - reinitialized the app `RKStorage` database with a minimal valid `AsyncStorage` schema and `customApiUrl=http://127.0.0.1:8080/`
+  - result: physical-device test state is now aligned with the current USB reverse setup
+
+## Mobile Physical-Device Follow-Up Notes
+- The `127.0.0.1:8080` custom API URL is only appropriate while `adb reverse tcp:8080 tcp:8080` remains active.
+- If the USB cable is disconnected or `adb reverse` is cleared, the device should switch back to a LAN-reachable backend URL such as `http://<host-lan-ip>:8080`.
+- `npx tsc --noEmit` still fails due the pre-existing `expo-file-system` typing issue in `mobile/screens/workOrders/WODetailsScreen.tsx`, unrelated to the navigation fix.
+
+## Mobile Auth Connectivity Follow-Up Verification Performed
+- Device-level TCP reachability:
+  - `adb shell sh -c "toybox nc -zv 127.0.0.1 8080"`
+  - `adb shell sh -c "toybox nc -zv 172.20.10.2 8080"`
+  - result: both endpoints are reachable from the physical Android device
+- Device-side stored URL inspection:
+  - extracted current `AsyncStorage` database from the app sandbox
+  - result: `customApiUrl` had been stored as `Http://172.20.10.2:8080/`
+- Mobile URL-handling hardening:
+  - `mobile/config.ts` now lowercases the URL scheme before appending the trailing slash
+  - `mobile/screens/auth/CustomServerScreen.tsx` now disables auto-capitalization and auto-correct, uses URL keyboard mode, and saves the normalized URL
+- Mobile API diagnostics:
+  - `mobile/utils/api.ts` now reports the destination URL when a fetch fails with `Network request failed`
+
+## Mobile Auth Connectivity Follow-Up Notes
+- The targeted `npx eslint ...` attempt did not run because the mobile workspace currently lacks a local ESLint setup and `npx` pulled ESLint v10, which expects flat config.
+- This lint failure is environmental and unrelated to the scoped mobile URL-handling changes.
+
+## Mobile Settings Picker Follow-Up Verification Performed
+- Mobile formatting:
+  - `npx prettier --write components/actionSheets/CustomActionSheet.tsx`
+  - result: passed
+- Mobile typecheck:
+  - `npx tsc --noEmit`
+  - result: still fails only because of the pre-existing `expo-file-system` typing issue in `mobile/screens/workOrders/WODetailsScreen.tsx`
+
+## Mobile Settings Picker Follow-Up Notes
+- Root cause:
+  - `mobile/components/actionSheets/CustomActionSheet.tsx` rendered options directly inside a static `View` and `List.Section`, with no scroll container for long lists.
+- Fix:
+  - wrapped the visible options list in a nested-scroll-enabled `ScrollView`
+  - constrained the sheet content height to `60%` of the current window height so long lists can scroll inside the sheet
+- Residual gap:
+  - no device-level manual confirmation has been run yet after the code change; the next check should be opening Settings and swiping through the language list on the physical device
+
+## Mobile Scan Follow-Up Verification Performed
+- Mobile formatting:
+  - `npx prettier --write screens/ScanAssetScreen.tsx`
+  - result: passed
+- Backend compile:
+  - `./mvnw.cmd -q -DskipTests compile`
+  - result: passed
+- Mobile typecheck:
+  - `npx tsc --noEmit`
+  - result: still fails only because of the pre-existing `expo-file-system` typing issue in `mobile/screens/workOrders/WODetailsScreen.tsx`
+
+## Mobile Scan Follow-Up Notes
+- Root cause:
+  - `mobile/screens/ScanAssetScreen.tsx` blocked both NFC and barcode or QR scanning behind the `NFC_BARCODE` entitlement.
+  - `api/src/main/java/com/grash/controller/AssetController.java` also blocked `GET /assets/barcode` with the same entitlement, so barcode or QR scanning could not work end to end even if the mobile screen were changed alone.
+- Fix:
+  - kept the existing entitlement check on the NFC option
+  - removed the entitlement check from the mobile barcode or QR option
+  - removed the matching entitlement guard from backend `GET /assets/barcode`
+- Residual gap:
+  - no device-level manual validation has been run yet after the code change; the next check should be opening `Scan -> Mã vạch/QR code` on the physical device and confirming that NFC still shows the license error when appropriate
+
+## Mobile Scan Lifecycle Follow-Up Verification Performed
+- Mobile formatting:
+  - `npx prettier --write screens/ScanAssetScreen.tsx screens/modals/SelectBarcodeModal.tsx`
+  - result: passed
+- Mobile typecheck:
+  - `npx tsc --noEmit`
+  - result: still fails only because of the pre-existing `expo-file-system` typing issue in `mobile/screens/workOrders/WODetailsScreen.tsx`
+
+## Mobile Scan Lifecycle Follow-Up Notes
+- Root cause:
+  - the dedicated `Scan` screen callback opened `SelectBarcode` but never dismissed it after a successful scan, unlike the shared form-field barcode picker flow.
+  - `mobile/screens/modals/SelectBarcodeModal.tsx` also kept the camera view mounted without any focus-driven reset, which makes repeated opens on a physical device more fragile.
+- Fix:
+  - removed the NFC option from the dedicated `Scan` screen so it is now barcode/QR-only
+  - dismissed the barcode modal from the dedicated `Scan` screen callback before continuing to the asset lookup flow
+  - made the barcode modal reset `scanned`, re-request permission state on focus, and only render an active `CameraView` while focused
+- Residual gap:
+  - no device-level manual confirmation has been run yet after the lifecycle change; the next check should be opening the dedicated barcode/QR scanner twice in a row on the physical device
+
+## Location Traffic-Light Automation Verification Performed
+- Backend focused tests:
+  - `.\mvnw.cmd -q "-Dtest=TrafficLightPointServiceTest,LocationServiceTest" test`
+  - result: passed
+- Backend compile:
+  - `.\mvnw.cmd -q -DskipTests compile`
+  - result: passed
+- Frontend formatting:
+  - `npx prettier --write src/models/owns/location.ts src/models/owns/trafficLight.ts src/content/own/Locations/index.tsx src/content/own/Locations/TrafficLightPointPanel.tsx src/i18n/translations/en.ts src/i18n/translations/vi.ts src/i18n/translations/zh_tw.ts`
+  - result: passed
+- Frontend targeted lint:
+  - `npx eslint src/models/owns/location.ts src/models/owns/trafficLight.ts src/content/own/Locations/index.tsx src/content/own/Locations/TrafficLightPointPanel.tsx src/i18n/translations/en.ts src/i18n/translations/vi.ts src/i18n/translations/zh_tw.ts`
+  - result: passed
+- Frontend production build:
+  - `npm run build`
+  - result: passed with the same pre-existing dependency warnings already seen elsewhere in the frontend build
+
+## Location Traffic-Light Automation Notes
+- Root cause:
+  - the project had a point-centric QR model and public QR flow, but the generic `Location` create/update flow never provisioned the required `TrafficLightPoint` or `QrTag`.
+  - because `TrafficLightPoint.poleCode` is mandatory and `TrafficLightPointDetailDTO` did not expose active QR data, even a manually created point could not show its QR inside the internal location drawer.
+- Fix:
+  - added a narrow `trafficLightEnabled` flag to `Location` and backfilled it for already-existing traffic-light locations
+  - extended `LocationService.create(...)` and `LocationService.update(...)` to auto-provision `TrafficLightPoint` plus an active `QrTag`
+  - exposed `activeQrPublicCode` in the existing traffic-light detail DTO and rendered the QR image plus copy/open/download/print actions in the location traffic-light panel
+- Residual gap:
+  - manual browser validation is still needed for the actual create/edit location form and location drawer flow against a running backend with Liquibase applied

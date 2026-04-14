@@ -85,14 +85,51 @@
 - [x] Inspect mobile login, register, and custom-server startup flow on physical-device issues
 - [x] Guard mobile runtime against missing default `API_URL`
 - [x] Surface backend and config errors in mobile login and register screens
+- [x] Bring local backend up successfully for mobile testing
+- [x] Diagnose Android physical-device `Custom Server` bundle failure through ADB and logcat
+- [x] Remove lazy-loaded `CustomServer` screen to avoid Windows split-bundle path errors
+- [x] Normalize mobile custom-server URLs and prevent keyboard auto-capitalization on the URL field
+- [x] Improve mobile network error diagnostics with request destination details
+- [x] Make the shared mobile action-sheet option list scrollable for long pickers such as language selection
+
+## Post-Phase Mobile Scan Follow-Up
+- [x] Inspect the mobile scan flow and identify the active license gate for barcode or QR scanning
+- [x] Remove the legacy license check from the mobile barcode or QR entry path while preserving the NFC gate
+- [x] Remove the matching backend `/assets/barcode` license gate so the scan flow succeeds end to end
+- [x] Verify backend compile and mobile formatting after the scan follow-up change
+
+## Post-Phase Mobile Scan Lifecycle Follow-Up
+- [x] Inspect the dedicated mobile `Scan` screen and the barcode modal reopen lifecycle
+- [x] Remove NFC from the dedicated mobile `Scan` screen
+- [x] Make the barcode modal reset and remount the camera on focus so repeated opens stay usable
+- [x] Verify mobile formatting after the scan lifecycle change
+
+## Post-Phase Location Traffic-Light Automation
+- [x] Re-read project memory and confirm the project stays on the point-centric QR model
+- [x] Identify the minimal marker needed to tell whether a location should auto-provision traffic-light data
+- [x] Add a `trafficLightEnabled` flag on `Location` and backfill it for existing traffic-light locations
+- [x] Auto-create `TrafficLightPoint` when a traffic-light location is created or first enabled
+- [x] Auto-create an active `QrTag.qrPublicCode` for new traffic-light points
+- [x] Preserve the traffic-light flag when a point already exists to avoid orphaned point state
+- [x] Expose the active QR public code in the location traffic-light detail DTO
+- [x] Render the QR code in the existing traffic-light location detail panel
+- [x] Verify focused backend tests, backend compile, frontend lint, and frontend build
 
 ## Snapshot
 - Completed:
   - Phases 0, 1, 2, 3, 4, 5, 6, and 7
   - post-phase localization maintenance
+  - post-phase mobile scan follow-up
+  - post-phase mobile scan lifecycle follow-up
+  - post-phase location traffic-light automation follow-up
 - In progress:
   - none
 - Pending:
+  - manual web validation that a new traffic-light location auto-creates its `TrafficLightPoint` and QR code
+  - manual web validation that toggling an existing non-traffic-light location on creates the point and QR code
+  - manual web validation that the QR shown in location detail resolves to the public traffic-light route
   - manual localization QA and terminology review
   - mobile device or simulator validation for the language picker flow
-  - mobile physical-device validation for login, register, and `Custom Server` against a reachable backend
+  - mobile physical-device validation for login, register, and `Custom Server` against the running local backend
+  - mobile physical-device validation that login and register succeed end to end with the current USB reverse or LAN backend setup
+  - mobile physical-device validation that barcode or QR scanning now opens without a license and keeps the camera preview working on repeated opens

@@ -31,6 +31,8 @@ public interface TrafficLightPointRepository extends JpaRepository<TrafficLightP
 
     Optional<TrafficLightPoint> findByLocation_Id(Long locationId);
 
+    boolean existsByLocation_Id(Long locationId);
+
     Optional<TrafficLightPoint> findByPoleCodeAndCompany_Id(String poleCode, Long companyId);
 
     List<TrafficLightPoint> findByCompany_Id(Long companyId);

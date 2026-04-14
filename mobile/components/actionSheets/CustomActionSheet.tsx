@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { Divider, List } from 'react-native-paper';
 import * as React from 'react';
 import { useRef } from 'react';
@@ -19,15 +19,20 @@ interface CustomActionSheetProps {
 
 export default function CustomActionSheet({ options }: CustomActionSheetProps) {
   const actionSheetRef = useRef<ActionSheetRef>(null);
+  const { height } = useWindowDimensions();
+  const visibleOptions = options.filter((option) => option.visible);
 
   return (
     <ActionSheet ref={actionSheetRef}>
       <View style={{ paddingHorizontal: 5, paddingVertical: 15 }}>
         <Divider />
-        <List.Section>
-          {options
-            .filter((option) => option.visible)
-            .map((entity, index) => (
+        <ScrollView
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          style={{ maxHeight: height * 0.6 }}
+        >
+          <List.Section>
+            {visibleOptions.map((entity, index) => (
               <List.Item
                 key={index}
                 style={{ paddingHorizontal: 15 }}
@@ -44,7 +49,8 @@ export default function CustomActionSheet({ options }: CustomActionSheetProps) {
                 }}
               />
             ))}
-        </List.Section>
+          </List.Section>
+        </ScrollView>
       </View>
     </ActionSheet>
   );

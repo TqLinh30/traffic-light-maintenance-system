@@ -10,6 +10,10 @@
   - mapable place with `name`, `address`, `latitude`, `longitude`, hierarchy, teams, workers, files
 - Current fit:
   - strong fit for one traffic light pole or intersection point
+- Operational flag:
+  - `trafficLightEnabled`
+  - purpose: marks that the location should auto-provision point-centric traffic-light records
+  - note: this is a workflow marker only, not a replacement for `TrafficLightPoint`
 
 ### Asset
 - Current role in Atlas:
@@ -112,6 +116,8 @@
 - Notes:
   - `qrPublicCode` should be the external public lookup key
   - only one active QR tag should resolve for a point at a time
+  - current default generation rule:
+    - `TLQR-C{companyId}-P{pointId}-V{version}-{random8}`
 
 ### Request
 - Reuse existing entity
@@ -148,6 +154,7 @@
 | Request intake | `Request` | existing entity + metadata columns | location and asset remain native request links |
 | Work execution | `WorkOrder` | existing entity reuse | created through existing approval flow |
 | Planned maintenance | `PreventiveMaintenance` | existing entity reuse | tied to point via `location` and optional main asset |
+| Traffic-light workflow marker | `Location.trafficLightEnabled` | additive boolean on existing entity | triggers auto-provision only |
 
 ## Field-Level Mapping
 
@@ -174,6 +181,7 @@
 | `nextMaintenanceAt` | derived from PM schedule if present, fallback to cycle rule if needed |
 | `currentStatus` | derived server-side |
 | `isActive` | `TrafficLightPoint.isActive` |
+| `trafficLightEnabled` | `Location.trafficLightEnabled` |
 
 ## Status Model
 
@@ -301,11 +309,26 @@
   - internal point-detail DTO for the location drawer
 - Fields:
   - `point`
+  - `activeQrPublicCode`
   - `preventiveMaintenances`
   - `recentWorkOrders`
 - Notes:
   - reuses `TrafficLightPointPublicDTO` as the point summary payload
   - remains a read-model only surface with no schema change
+  - the location drawer now uses `activeQrPublicCode` to render the printable internal QR view
+
+## Post-Phase Location Provisioning Notes
+
+### Location Create or Enable Flow
+- When `Location.trafficLightEnabled == true`:
+  - `LocationService` now auto-provisions a `TrafficLightPoint` if one does not yet exist
+  - the default `poleCode` is generated from `Location.customId`
+  - an active `QrTag` is created automatically if the point has no active tag
+
+### Disable Behavior
+- If a location already has a `TrafficLightPoint`, attempts to turn `trafficLightEnabled` off through the update flow are ignored.
+- Rationale:
+  - avoids orphaning point history, QR access, PM context, and map behavior after the point already exists
 
 ### TrafficLightPreventiveMaintenanceSummaryDTO
 - Purpose:

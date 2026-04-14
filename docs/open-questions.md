@@ -75,3 +75,14 @@
 - Do we want a lightweight `hasTrafficLightPoint` signal on locations to avoid optional point-detail lookup misses?
 - What evidence threshold should trigger a real duplicate-request warning or suppression rule?
 - Do we want a native-speaker terminology review pass for the generated `vi` and completed `zh_tw` UI copy before production rollout?
+
+## Resolved Post-Phase QR Provisioning
+- The project stays point-centric:
+  - one `TrafficLightPoint` remains anchored to one `Location`
+  - `Asset` remains secondary equipment
+  - `QrTag` continues to resolve to `TrafficLightPoint`
+- Traffic-light locations now use a lightweight `trafficLightEnabled` flag on `Location` only to trigger provisioning.
+- New or first-enabled traffic-light locations auto-create:
+  - `TrafficLightPoint`
+  - default `poleCode`
+  - active `QrTag.qrPublicCode`

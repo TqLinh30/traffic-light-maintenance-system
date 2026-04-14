@@ -35,6 +35,8 @@ public class Location extends CompanyAudit {
 
     private boolean isDemo;
 
+    private boolean trafficLightEnabled;
+
     @ManyToMany
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @JoinTable(name = "T_Location_User_Associations",

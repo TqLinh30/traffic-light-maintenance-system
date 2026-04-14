@@ -44,6 +44,7 @@ public class LocationService {
     private final FileService fileService;
     private final CustomSequenceService customSequenceService;
     private final LicenseService licenseService;
+    private final TrafficLightPointService trafficLightPointService;
 
     @Transactional
     public Location create(Location location, Company company) {
@@ -51,6 +52,7 @@ public class LocationService {
         location.setCustomId(getLocationNumber(company));
 
         Location savedLocation = locationRepository.saveAndFlush(location);
+        trafficLightPointService.ensurePointAndActiveQrTagForLocation(savedLocation);
         em.refresh(savedLocation);
         return savedLocation;
     }
@@ -61,6 +63,11 @@ public class LocationService {
             Location savedLocation = locationRepository.findById(id).get();
             Location patchedLocation = locationRepository.saveAndFlush(locationMapper.updateLocation(savedLocation,
                     location));
+            if (!patchedLocation.isTrafficLightEnabled() && trafficLightPointService.hasPointForLocation(id)) {
+                patchedLocation.setTrafficLightEnabled(true);
+                patchedLocation = locationRepository.saveAndFlush(patchedLocation);
+            }
+            trafficLightPointService.ensurePointAndActiveQrTagForLocation(patchedLocation);
             em.refresh(patchedLocation);
             return patchedLocation;
         } else throw new CustomException("Not found", HttpStatus.NOT_FOUND);

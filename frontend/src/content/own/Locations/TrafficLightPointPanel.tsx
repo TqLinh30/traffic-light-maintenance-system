@@ -1,5 +1,6 @@
 import {
   Box,
+  Button,
   Divider,
   Grid,
   List,
@@ -8,9 +9,13 @@ import {
   Typography,
   useTheme
 } from '@mui/material';
-import { useContext } from 'react';
+import DownloadIcon from '@mui/icons-material/Download';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import PrintIcon from '@mui/icons-material/Print';
+import { useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { CompanySettingsContext } from '../../../contexts/CompanySettingsContext';
 import { TrafficLightPointDetailDTO } from '../../../models/owns/trafficLight';
 import useDateLocale from '../../../hooks/useDateLocale';
@@ -42,6 +47,10 @@ export default function TrafficLightPointPanel({
   const theme = useTheme();
   const dateLocale = useDateLocale();
   const { getFormattedDate } = useContext(CompanySettingsContext);
+  const [copied, setCopied] = useState(false);
+  const qrPublicUrl = details.activeQrPublicCode
+    ? `${window.location.origin}/traffic-light/${details.activeQrPublicCode}`
+    : '';
 
   const SummaryField = ({
     label,
@@ -70,6 +79,87 @@ export default function TrafficLightPointPanel({
       default:
         return theme.colors.alpha.black[30];
     }
+  };
+
+  const handleCopyQrLink = async () => {
+    if (!qrPublicUrl) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(qrPublicUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy traffic light QR link', error);
+    }
+  };
+
+  const handleDownloadQR = () => {
+    if (!details.activeQrPublicCode) {
+      return;
+    }
+    const svg = document.getElementById(
+      `traffic-light-qr-code-${details.point.id}`
+    );
+    if (!svg) {
+      return;
+    }
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx?.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL('image/png');
+
+      const downloadLink = document.createElement('a');
+      downloadLink.download = `${
+        details.point.poleCode || 'traffic-light'
+      }-qr.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+
+    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+  };
+
+  const handlePrintQR = () => {
+    if (!details.activeQrPublicCode) {
+      return;
+    }
+    const svg = document.getElementById(
+      `traffic-light-qr-code-${details.point.id}`
+    );
+    if (!svg) {
+      return;
+    }
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const printWindow = window.open('', '_blank');
+    printWindow?.document.write(`
+      <html>
+        <head>
+          <title>QR Code - ${details.point.poleCode}</title>
+          <style>
+            body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+            img { max-width: 100%; }
+          </style>
+        </head>
+        <body>
+          <img src="data:image/svg+xml;base64,${btoa(svgData)}" />
+        </body>
+      </html>
+    `);
+    printWindow?.document.close();
+    printWindow?.focus();
+    setTimeout(() => {
+      printWindow?.print();
+      printWindow?.close();
+    }, 500);
   };
 
   return (
@@ -113,6 +203,10 @@ export default function TrafficLightPointPanel({
             label={t('maintenance_cycle_days')}
             value={details.point.maintenanceCycleDays}
           />
+          <SummaryField
+            label={t('qr_public_code')}
+            value={details.activeQrPublicCode}
+          />
           {details.point.mainAsset && (
             <Grid item xs={12} lg={6}>
               <Typography
@@ -124,13 +218,89 @@ export default function TrafficLightPointPanel({
               <Typography
                 variant="h6"
                 sx={{ cursor: 'pointer', color: theme.colors.primary.main }}
-                onClick={() => navigate(getAssetUrl(details.point.mainAsset.id))}
+                onClick={() =>
+                  navigate(getAssetUrl(details.point.mainAsset.id))
+                }
               >
                 {details.point.mainAsset.name}
               </Typography>
             </Grid>
           )}
         </Grid>
+      </Box>
+      <Divider />
+      <Box>
+        <Typography sx={{ mt: 2, mb: 1 }} variant="h4">
+          {t('traffic_light_qr_code')}
+        </Typography>
+        {qrPublicUrl ? (
+          <Stack spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
+            <Box
+              sx={{
+                backgroundColor: theme.palette.grey[50],
+                borderRadius: 2,
+                p: 3,
+                display: 'flex',
+                justifyContent: 'center'
+              }}
+            >
+              <Box
+                sx={{
+                  bgcolor: 'white',
+                  p: 2,
+                  borderRadius: 1,
+                  boxShadow: 1
+                }}
+              >
+                <QRCodeSVG
+                  id={`traffic-light-qr-code-${details.point.id}`}
+                  value={qrPublicUrl}
+                  size={200}
+                  level="H"
+                  includeMargin={true}
+                />
+              </Box>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              {qrPublicUrl}
+            </Typography>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              width="100%"
+              justifyContent={{ sm: 'center' }}
+            >
+              <Button variant="outlined" onClick={handleCopyQrLink}>
+                {copied ? t('copied') : t('copy')}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<OpenInNewIcon />}
+                onClick={() => window.open(qrPublicUrl, '_blank')}
+              >
+                {t('OPEN')}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleDownloadQR}
+              >
+                {t('download')}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<PrintIcon />}
+                onClick={handlePrintQR}
+              >
+                {t('print')}
+              </Button>
+            </Stack>
+          </Stack>
+        ) : (
+          <Stack direction="row" justifyContent="center" width="100%">
+            <Typography variant="h5">{t('qr_code_not_available')}</Typography>
+          </Stack>
+        )}
       </Box>
       <Divider />
       <Box>
@@ -144,7 +314,9 @@ export default function TrafficLightPointPanel({
                 key={preventiveMaintenance.id}
                 divider
                 onClick={() =>
-                  navigate(getPreventiveMaintenanceUrl(preventiveMaintenance.id))
+                  navigate(
+                    getPreventiveMaintenanceUrl(preventiveMaintenance.id)
+                  )
                 }
               >
                 <Box>
@@ -203,14 +375,19 @@ export default function TrafficLightPointPanel({
                   <Box>
                     <Typography variant="h6">{workOrder.title}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {[workOrder.customId, getFormattedDate(workOrder.createdAt)]
+                      {[
+                        workOrder.customId,
+                        getFormattedDate(workOrder.createdAt)
+                      ]
                         .filter(Boolean)
                         .join(' | ')}
                     </Typography>
                   </Box>
                   <Box
                     sx={{
-                      backgroundColor: getWorkOrderStatusColor(workOrder.status),
+                      backgroundColor: getWorkOrderStatusColor(
+                        workOrder.status
+                      ),
                       color: 'white',
                       width: 'fit-content',
                       height: 'fit-content',

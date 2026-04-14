@@ -9,9 +9,18 @@ export const googleMapsConfig = {
 const defaultApiUrl = Constants.expoConfig.extra.API_URL;
 export const IS_LOCALHOST = false;
 
-const normalizeApiUrl = (apiUrl: string): string => {
+const normalizeUrlScheme = (apiUrl: string): string =>
+  apiUrl.replace(
+    /^([A-Za-z][A-Za-z0-9+.-]*):\/\//,
+    (_, scheme: string) => `${scheme.toLowerCase()}://`
+  );
+
+export const normalizeApiUrl = (apiUrl: string): string => {
   const trimmedApiUrl = apiUrl.trim();
-  return trimmedApiUrl.endsWith('/') ? trimmedApiUrl : `${trimmedApiUrl}/`;
+  const normalizedSchemeUrl = normalizeUrlScheme(trimmedApiUrl);
+  return normalizedSchemeUrl.endsWith('/')
+    ? normalizedSchemeUrl
+    : `${normalizedSchemeUrl}/`;
 };
 
 // Function to get the API URL (either custom or default)

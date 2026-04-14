@@ -299,6 +299,31 @@
   - `Asset.barCode`
   - request portal UUID routing
 
+## Post-Phase Location Provisioning Architecture
+- `Location` now carries a narrow workflow flag:
+  - `trafficLightEnabled`
+- Purpose:
+  - tells the generic location create or update flow that this location should auto-provision point-centric traffic-light data
+- Provisioning path:
+  - `LocationService.create(...)` or `LocationService.update(...)`
+  - `TrafficLightPointService.ensurePointAndActiveQrTagForLocation(...)`
+  - create `TrafficLightPoint` if missing
+  - create active `QrTag` if missing
+- Notes:
+  - this preserves the accepted `Location -> TrafficLightPoint` model
+  - the flag is operational only and does not move traffic-light metadata into `Location`
+  - once a point exists, the update flow preserves `trafficLightEnabled=true` to avoid orphaning point-related data
+
+## Internal Point Detail QR Surface
+- Existing screen:
+  - `frontend/src/content/own/Locations/TrafficLightPointPanel.tsx`
+- Read-model change:
+  - `TrafficLightPointDetailDTO.activeQrPublicCode`
+- Behavior:
+  - internal users can now see the active QR in the location drawer
+  - the internal panel renders the QR image and actions to copy, open, download, or print it
+  - the public destination remains `/traffic-light/:qrPublicCode`
+
 ## Rejected Reuse Path
 - Atlas has a `CustomField` feature, but it is vendor-specific and not suitable for:
   - public QR lookup
@@ -333,3 +358,6 @@
 - Post-phase localization assessment:
   - the frontend localization layer now has one explicit switching path, complete `zh_tw` key coverage, and a first-class `vi` bundle.
   - the next safe follow-up is manual terminology QA rather than more architectural i18n change.
+- Post-phase location provisioning assessment:
+  - the point-centric QR architecture is now fully connected to the normal `Location` workflow instead of relying on pre-seeded `TrafficLightPoint` and `QrTag` data.
+  - the next safe follow-up is manual UI validation and seed-data readiness rather than more schema redesign.

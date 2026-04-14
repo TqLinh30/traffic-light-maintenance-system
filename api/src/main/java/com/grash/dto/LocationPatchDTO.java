@@ -22,6 +22,8 @@ public class LocationPatchDTO {
 
     private Double latitude;
 
+    private Boolean trafficLightEnabled;
+
     @Schema(implementation = IdDTO.class)
     private Location parentLocation;
 

@@ -1,0 +1,23 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="2026_04_14_location_traffic_light_enabled_001" author="OpenAI">
+        <addColumn tableName="location">
+            <column name="traffic_light_enabled" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <sql>
+            UPDATE location
+            SET traffic_light_enabled = TRUE
+            WHERE id IN (
+                SELECT atlas_location_id
+                FROM traffic_light_point
+            );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

@@ -10,11 +10,7 @@ export type TrafficLightStatus =
   | 'IN_PROGRESS'
   | 'INACTIVE';
 
-export type TrafficLightSafetySeverity =
-  | 'LOW'
-  | 'MEDIUM'
-  | 'HIGH'
-  | 'CRITICAL';
+export type TrafficLightSafetySeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface TrafficLightWorkOrderMini {
   id: number;
@@ -79,6 +75,7 @@ export interface TrafficLightPreventiveMaintenanceSummaryDTO {
 
 export interface TrafficLightPointDetailDTO {
   point: TrafficLightPointPublicDTO;
+  activeQrPublicCode?: string | null;
   preventiveMaintenances: TrafficLightPreventiveMaintenanceSummaryDTO[];
   recentWorkOrders: TrafficLightWorkOrderMini[];
 }

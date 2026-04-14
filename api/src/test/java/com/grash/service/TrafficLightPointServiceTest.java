@@ -45,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
@@ -330,6 +331,14 @@ class TrafficLightPointServiceTest {
 
         when(trafficLightPointRepository.findByLocationIdAndCompanyIdWithRelations(10L, 5L))
                 .thenReturn(Optional.of(point));
+        QrTag activeQrTag = new QrTag();
+        activeQrTag.setId(800L);
+        activeQrTag.setStatus(QrTagStatus.ACTIVE);
+        activeQrTag.setVersion(1);
+        activeQrTag.setTrafficLightPoint(point);
+        activeQrTag.setQrPublicCode("QR-DETAIL-001");
+        when(qrTagRepository.findFirstByTrafficLightPoint_IdAndStatusOrderByVersionDesc(400L, QrTagStatus.ACTIVE))
+                .thenReturn(Optional.of(activeQrTag));
         when(workOrderService.findByLocation(10L)).thenReturn(List.of(recentWorkOrder));
         when(preventiveMaintenanceRepository.findByLocationIdWithSchedule(10L))
                 .thenReturn(List.of(preventiveMaintenance));
@@ -340,11 +349,50 @@ class TrafficLightPointServiceTest {
         TrafficLightPointDetailDTO dto = service.getDetailsByLocationId(10L, 5L);
 
         assertNotNull(dto.getPoint());
+        assertEquals("QR-DETAIL-001", dto.getActiveQrPublicCode());
         assertEquals(1, dto.getPreventiveMaintenances().size());
         assertEquals(600L, dto.getPreventiveMaintenances().get(0).getId());
         assertEquals(nextWorkOrderDate, dto.getPreventiveMaintenances().get(0).getNextWorkOrderDate());
         assertEquals(1, dto.getRecentWorkOrders().size());
         assertEquals(700L, dto.getRecentWorkOrders().get(0).getId());
+    }
+
+    @Test
+    void ensurePointAndActiveQrTagForLocationShouldCreatePointAndQrTag() {
+        Company company = new Company();
+        company.setId(5L);
+
+        Location location = new Location();
+        location.setId(10L);
+        location.setCustomId("L000010");
+        location.setTrafficLightEnabled(true);
+        location.setCompany(company);
+
+        when(trafficLightPointRepository.findByLocation_Id(10L)).thenReturn(Optional.empty());
+        when(trafficLightPointRepository.saveAndFlush(any(TrafficLightPoint.class))).thenAnswer(invocation -> {
+            TrafficLightPoint savedPoint = invocation.getArgument(0);
+            savedPoint.setId(900L);
+            return savedPoint;
+        });
+        when(qrTagRepository.findFirstByTrafficLightPoint_IdAndStatusOrderByVersionDesc(900L, QrTagStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+        when(qrTagRepository.findTopByTrafficLightPoint_IdOrderByVersionDesc(900L)).thenReturn(Optional.empty());
+        when(qrTagRepository.existsByQrPublicCode(any(String.class))).thenReturn(false);
+        when(qrTagRepository.save(any(QrTag.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TrafficLightPoint point = service.ensurePointAndActiveQrTagForLocation(location);
+
+        assertNotNull(point);
+        assertEquals(900L, point.getId());
+        assertEquals("TL-L000010", point.getPoleCode());
+
+        ArgumentCaptor<QrTag> qrTagCaptor = ArgumentCaptor.forClass(QrTag.class);
+        verify(qrTagRepository).save(qrTagCaptor.capture());
+        QrTag savedQrTag = qrTagCaptor.getValue();
+        assertEquals(point, savedQrTag.getTrafficLightPoint());
+        assertEquals(QrTagStatus.ACTIVE, savedQrTag.getStatus());
+        assertEquals(1, savedQrTag.getVersion());
+        assertTrue(savedQrTag.getQrPublicCode().startsWith("TLQR-C5-P900-V1-"));
     }
 
     private TrafficLightPoint createPoint(Company company, Location location, Asset asset) {

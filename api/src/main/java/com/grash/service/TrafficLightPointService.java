@@ -13,6 +13,7 @@ import com.grash.exception.CustomException;
 import com.grash.mapper.PreventiveMaintenanceMapper;
 import com.grash.mapper.WorkOrderMapper;
 import com.grash.model.Asset;
+import com.grash.model.Location;
 import com.grash.model.PreventiveMaintenance;
 import com.grash.model.QrTag;
 import com.grash.model.Request;
@@ -31,6 +32,7 @@ import com.grash.repository.WorkOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -42,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -120,9 +123,11 @@ public class TrafficLightPointService {
         TrafficLightPoint point = trafficLightPointRepository.findByLocationIdAndCompanyIdWithRelations(locationId,
                         companyId)
                 .orElseThrow(() -> new CustomException("Traffic light point not found", HttpStatus.NOT_FOUND));
+        QrTag activeQrTag = ensureActiveQrTag(point);
 
         TrafficLightPointDetailDTO dto = new TrafficLightPointDetailDTO();
         dto.setPoint(toPublicDto(point));
+        dto.setActiveQrPublicCode(activeQrTag.getQrPublicCode());
         dto.setPreventiveMaintenances(getRelatedPreventiveMaintenances(point).stream()
                 .map(this::toPreventiveMaintenanceSummaryDto)
                 .sorted(Comparator.comparing(TrafficLightPreventiveMaintenanceSummaryDTO::getNextWorkOrderDate,
@@ -153,6 +158,22 @@ public class TrafficLightPointService {
         request.setPriority(toPriority(dto.getSafetySeverity()));
 
         return requestService.create(request, point.getCompany());
+    }
+
+    @Transactional
+    public TrafficLightPoint ensurePointAndActiveQrTagForLocation(Location location) {
+        if (location == null || !location.isTrafficLightEnabled()) {
+            return null;
+        }
+
+        TrafficLightPoint point = trafficLightPointRepository.findByLocation_Id(location.getId())
+                .orElseGet(() -> createPointForLocation(location));
+        ensureActiveQrTag(point);
+        return point;
+    }
+
+    public boolean hasPointForLocation(Long locationId) {
+        return trafficLightPointRepository.existsByLocation_Id(locationId);
     }
 
     TrafficLightPointPublicDTO toPublicDto(TrafficLightPoint point) {
@@ -263,6 +284,50 @@ public class TrafficLightPointService {
             throw new CustomException("QR tag is not active", HttpStatus.GONE);
         }
         return qrTag;
+    }
+
+    private TrafficLightPoint createPointForLocation(Location location) {
+        TrafficLightPoint point = new TrafficLightPoint();
+        point.setCompany(location.getCompany());
+        point.setLocation(location);
+        point.setPoleCode(generatePoleCode(location));
+        point.setActive(true);
+        return trafficLightPointRepository.saveAndFlush(point);
+    }
+
+    private QrTag ensureActiveQrTag(TrafficLightPoint point) {
+        return qrTagRepository.findFirstByTrafficLightPoint_IdAndStatusOrderByVersionDesc(point.getId(),
+                        QrTagStatus.ACTIVE)
+                .orElseGet(() -> createActiveQrTag(point));
+    }
+
+    private QrTag createActiveQrTag(TrafficLightPoint point) {
+        int nextVersion = qrTagRepository.findTopByTrafficLightPoint_IdOrderByVersionDesc(point.getId())
+                .map(QrTag::getVersion)
+                .orElse(0) + 1;
+        QrTag qrTag = new QrTag();
+        qrTag.setCompany(point.getCompany());
+        qrTag.setTrafficLightPoint(point);
+        qrTag.setVersion(nextVersion);
+        qrTag.setStatus(QrTagStatus.ACTIVE);
+        qrTag.setQrPublicCode(generateQrPublicCode(point, nextVersion));
+        return qrTagRepository.save(qrTag);
+    }
+
+    private String generatePoleCode(Location location) {
+        String baseCode = location.getCustomId() != null && !location.getCustomId().isBlank()
+                ? location.getCustomId().replaceAll("[^A-Za-z0-9]", "").toUpperCase()
+                : "LOC" + location.getId();
+        return "TL-" + baseCode;
+    }
+
+    private String generateQrPublicCode(TrafficLightPoint point, int version) {
+        String prefix = String.format("TLQR-C%s-P%s-V%s-", point.getCompany().getId(), point.getId(), version);
+        String candidate;
+        do {
+            candidate = prefix + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        } while (qrTagRepository.existsByQrPublicCode(candidate));
+        return candidate;
     }
 
     private List<WorkOrderMiniDTO> getActiveWorkOrders(TrafficLightPoint point) {

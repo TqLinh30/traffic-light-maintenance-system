@@ -10,9 +10,10 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { RootStackScreenProps } from '../../types';
 import { useTranslation } from 'react-i18next';
-import { Text } from 'react-native-paper';
+import { ActivityIndicator, Text } from 'react-native-paper';
 import { CameraView } from 'expo-camera';
 import { ensureScannerCameraPermission } from '../../utils/mediaPermissions';
+import { useIsFocused } from '@react-navigation/native';
 
 export default function SelectBarcodeModal({
   route
@@ -22,12 +23,23 @@ export default function SelectBarcodeModal({
   const [scanned, setScanned] = useState<boolean>(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const layout = useWindowDimensions();
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     let mounted = true;
 
+    if (!isFocused) {
+      return () => {
+        mounted = false;
+      };
+    }
+
     const requestPermission = async () => {
-      console.warn('[SelectBarcodeModal] Tap/screen open -> request camera permission');
+      setScanned(false);
+      setHasPermission(null);
+      console.warn(
+        '[SelectBarcodeModal] Tap/screen open -> request camera permission'
+      );
       const granted = await ensureScannerCameraPermission('SelectBarcodeModal');
       if (mounted) {
         setHasPermission(granted);
@@ -39,7 +51,7 @@ export default function SelectBarcodeModal({
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isFocused]);
 
   const handleBarCodeScanned = ({
     type,
@@ -49,26 +61,36 @@ export default function SelectBarcodeModal({
     data: string;
   }) => {
     if (!scanned) {
-      console.warn('[SelectBarcodeModal] Barcode scanned', JSON.stringify({ type }));
+      console.warn(
+        '[SelectBarcodeModal] Barcode scanned',
+        JSON.stringify({ type })
+      );
       setScanned(true);
       onChange(data);
     }
   };
 
+  if (hasPermission === null) {
+    return (
+      <View style={styles.permissionContainer}>
+        <ActivityIndicator size={'large'} />
+        <Text variant={'titleLarge'} style={styles.permissionText}>
+          {t('to_scan')}
+        </Text>
+      </View>
+    );
+  }
+
   if (!hasPermission) {
     return (
-      <View
-        style={{
-          backgroundColor: 'white',
-          padding: 20,
-          borderRadius: 10
-        }}
-      >
+      <View style={styles.permissionContainer}>
         <Text variant={'titleLarge'}>{t('no_access_to_camera')}</Text>
         <TouchableOpacity
           onPress={async () => {
             console.warn('[SelectBarcodeModal] Retry permission');
-            const granted = await ensureScannerCameraPermission('SelectBarcodeModal');
+            const granted = await ensureScannerCameraPermission(
+              'SelectBarcodeModal'
+            );
             setHasPermission(granted);
           }}
           style={styles.permissionButton}
@@ -87,10 +109,23 @@ export default function SelectBarcodeModal({
 
   return (
     <View style={styles.container}>
-      <CameraView
-        onBarcodeScanned={handleBarCodeScanned}
-        style={{ width: layout.width, height: layout.height }}
-      />
+      {isFocused && (
+        <CameraView
+          key={'barcode-camera'}
+          active={isFocused}
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+          onCameraReady={() => {
+            console.warn('[SelectBarcodeModal] Camera ready');
+          }}
+          onMountError={(event) => {
+            console.warn(
+              '[SelectBarcodeModal] Camera mount error',
+              JSON.stringify(event)
+            );
+          }}
+          style={{ width: layout.width, height: layout.height }}
+        />
+      )}
     </View>
   );
 }
@@ -98,6 +133,16 @@ export default function SelectBarcodeModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1
+  },
+  permissionContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    flex: 1,
+    justifyContent: 'center'
+  },
+  permissionText: {
+    marginTop: 16
   },
   permissionButton: {
     alignSelf: 'flex-start',

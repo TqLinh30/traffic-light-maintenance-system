@@ -232,5 +232,11 @@
 - Phase 6: completed
 - Phase 7: completed
 - Post-phase localization maintenance: completed
+- Post-phase location traffic-light automation: completed
+- Latest follow-up delivered:
+  - `Location` can now be explicitly marked as a traffic-light location through `trafficLightEnabled`
+  - creating or first-enabling that location now auto-provisions `TrafficLightPoint`
+  - an active `QrTag.qrPublicCode` is generated automatically
+  - the location traffic-light detail tab now shows the QR visually and exposes copy/open/download/print actions
 - Next smallest logical step:
-  - run manual UAT for traffic-light workflows and localization switching, then decide deployment or pilot rollout sequencing
+  - run manual UAT for location creation or enablement, confirm the auto-generated QR opens the public traffic-light page, then decide deployment or pilot rollout sequencing

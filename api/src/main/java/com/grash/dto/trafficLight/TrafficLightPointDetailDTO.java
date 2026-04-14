@@ -11,6 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 public class TrafficLightPointDetailDTO {
     private TrafficLightPointPublicDTO point;
+    private String activeQrPublicCode;
     private List<TrafficLightPreventiveMaintenanceSummaryDTO> preventiveMaintenances = new ArrayList<>();
     private List<WorkOrderMiniDTO> recentWorkOrders = new ArrayList<>();
 }

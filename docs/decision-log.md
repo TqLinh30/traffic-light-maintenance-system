@@ -293,3 +293,109 @@
   - accepted
 - Rationale:
   - physical-device testing showed that the old flow collapsed missing-server, network, and credential problems into the same generic `wrong_credentials` snackbar, which made first-run setup unnecessarily hard to diagnose.
+
+### D-035
+- Decision:
+  - use a dedicated Docker PostgreSQL instance exposed on local port `5433` for backend startup on this workstation because the host already runs a native PostgreSQL service on `5432`.
+- Status:
+  - accepted
+- Rationale:
+  - backend startup succeeded only after avoiding the host-level PostgreSQL port collision and pointing `DB_URL` to the dedicated project database.
+
+### D-036
+- Decision:
+  - treat the mobile `Custom Server` setting and the Expo development bundle server as two separate runtime dependencies during physical-device testing.
+- Status:
+  - accepted
+- Rationale:
+  - `mobile/screens/auth/CustomServerScreen.tsx` only stores the API base URL in `AsyncStorage`; it does not control Metro or Expo dev-client bundle loading.
+  - when using the `development` profile from `mobile/eas.json`, the device must reach both the backend API on `8080` and Metro on `8081`.
+
+### D-037
+- Decision:
+  - avoid `React.lazy(...)` for the mobile `CustomServer` auth screen and use a static import instead.
+- Status:
+  - accepted
+- Rationale:
+  - Android physical-device logcat showed Expo dev client requesting a lazy split bundle at `screens\\auth\\CustomServerScreen.bundle`, which contains Windows path separators and fails to load.
+  - other auth screens already use static imports, so this is the smallest safe fix for the device-only bundle failure.
+
+### D-038
+- Decision:
+  - normalize mobile custom-server URLs to a lowercase scheme and disable auto-capitalization or correction on the URL input field.
+- Status:
+  - accepted
+- Rationale:
+  - physical-device inspection showed `customApiUrl` had been stored as `Http://172.20.10.2:8080/`, which points to keyboard auto-capitalization on the first character of the URL.
+  - the Android device can already reach both `127.0.0.1:8080` through `adb reverse` and `172.20.10.2:8080` directly, so the remaining auth failure is more likely caused by malformed app-side URL handling than raw network reachability.
+
+### D-039
+- Decision:
+  - make the shared mobile `CustomActionSheet` content scrollable instead of leaving long option lists in a fixed-height static container.
+- Status:
+  - accepted
+- Rationale:
+  - the mobile language picker uses `basic-select-sheet`, which reuses `CustomActionSheet`.
+  - without a `ScrollView`, long lists like the supported-language list cannot be scrolled on-device, and the issue is better fixed once in the shared sheet component than per screen.
+
+### D-040
+- Decision:
+  - allow mobile asset barcode or QR scanning without the legacy `NFC_BARCODE` license entitlement, while keeping NFC scanning behind the entitlement gate.
+- Status:
+  - accepted
+- Rationale:
+  - the current mobile `ScanAssetScreen` and backend `GET /assets/barcode` endpoint were both blocking barcode or QR usage with the same scan-license check.
+  - the user-reported problem is specifically on the barcode or QR path, and lifting that gate alone is the smallest safe change because it leaves NFC behavior unchanged.
+
+### D-041
+- Decision:
+  - treat the dedicated mobile `Scan` screen as barcode/QR-only and harden the barcode modal with focus-based camera remounting instead of removing shared NFC scan support everywhere.
+- Status:
+  - accepted
+- Rationale:
+  - the physical-device issue is specific to reopening the dedicated barcode/QR scanner, and the dedicated `Scan` entry no longer needs an NFC option.
+  - the shared `SelectNfc` route is still referenced by generic form fields, so removing it globally would be a broader change than needed for the current fix.
+
+### D-042
+- Decision:
+  - no refactor decision yet on the new asset-centric QR requirement; treat it as an explicit architecture conflict with the accepted point-centric QR model until the revised business object is confirmed.
+- Status:
+  - superseded
+- Rationale:
+  - the implemented QR flow currently resolves `QrTag -> TrafficLightPoint -> Location`, and request, map, PM, and detail surfaces all build on that assumption.
+  - switching to one-QR-per-child-asset would change not just QR generation, but also what the core traffic-light object is throughout the system.
+
+### D-043
+- Decision:
+  - reject the asset-centric QR refactor and keep the existing point-centric model where one traffic-light point is anchored to one `Location`.
+- Status:
+  - accepted
+- Rationale:
+  - the current request, map, PM, and public QR flows already align around `Location -> TrafficLightPoint`.
+  - the user explicitly chose to keep the older model and only automate provisioning from the location workflow.
+
+### D-044
+- Decision:
+  - add a lightweight `Location.trafficLightEnabled` boolean only as an operational marker that tells the location workflow to auto-provision traffic-light records.
+- Status:
+  - accepted
+- Rationale:
+  - the generic Atlas `Location` model has no existing type field, and this is the smallest safe way to distinguish traffic-light locations without moving point metadata into `Location`.
+  - the new flag is intentionally narrow in scope: it enables provisioning but does not replace `TrafficLightPoint` as the source of traffic-light-specific data.
+
+### D-045
+- Decision:
+  - auto-create `TrafficLightPoint` and an active `QrTag` when a location is created or first enabled for traffic-light use, and do not allow the flag to be turned off once a point already exists.
+- Status:
+  - accepted
+- Rationale:
+  - this keeps the new behavior additive and avoids destructive or ambiguous “disable” behavior that could orphan existing traffic-light history, PM, requests, or map status.
+
+### D-046
+- Decision:
+  - generate the default `poleCode` from the location custom ID and generate the active `qrPublicCode` with the rule `TLQR-C{companyId}-P{pointId}-V{version}-{random8}`.
+- Status:
+  - accepted
+- Rationale:
+  - `TrafficLightPoint.poleCode` is required, and deriving it from the existing location custom ID gives a stable default without needing a second sequence immediately.
+  - the QR public code needs to be unique, versionable, and safe for future QR replacement, so the rule combines point identity, tag version, and a short random suffix.

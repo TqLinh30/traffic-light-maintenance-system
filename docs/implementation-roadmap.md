@@ -126,6 +126,19 @@
   - replaced direct `i18n.changeLanguage(...)` calls in settings and public screens with a shared helper
   - fixed auth bootstrap so stored company language is no longer forced away from `EN`
 
+## Post-Phase Location Traffic-Light Automation
+- Goal:
+  - remove the remaining manual seeding gap by provisioning traffic-light point and QR records directly from the existing location workflow
+- Smallest expected output:
+  - explicit location-level enablement, automatic point and QR creation, and QR visibility in the location detail drawer
+- Status:
+  - completed
+- Implemented:
+  - additive `Location.trafficLightEnabled` workflow flag with backfill for existing traffic-light locations
+  - automatic `TrafficLightPoint` creation when a location is created or first enabled for traffic-light use
+  - automatic active `QrTag` generation with a stable default rule
+  - active QR surfaced and rendered inside the existing traffic-light detail tab in the location drawer
+
 ## Smallest QR MVP Path
 1. Phase 1: confirm the point, QR, and request metadata model.
 2. Phase 2: add QR resolve backend support.
@@ -139,8 +152,9 @@
 - advanced real-time dispatching
 
 ## Current Next Step
-- All planned phases are complete, and post-phase localization maintenance is complete.
+- All planned phases are complete, post-phase localization maintenance is complete, and post-phase location traffic-light automation is complete.
 - Recommended follow-up:
+  - run manual create/edit validation for traffic-light locations and confirm QR auto-provisioning
   - run manual UAT with seeded traffic-light data
   - verify `en`, `zh_tw`, and `vi` switching on settings and public pages
   - validate role behavior with real user accounts

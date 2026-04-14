@@ -192,4 +192,6 @@
              relativeToChangelogFile="true"/>
     <include file="changelog/2026_04_12_1776001000_traffic_light_qr.xml"
              relativeToChangelogFile="true"/>
+    <include file="changelog/2026_04_14_1776160000_location_traffic_light_enabled.xml"
+             relativeToChangelogFile="true"/>
 </databaseChangeLog>

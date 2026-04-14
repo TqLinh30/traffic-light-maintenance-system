@@ -10,6 +10,7 @@ import { CustomSnackBarContext } from '../../contexts/CustomSnackBarContext';
 import * as React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppTheme } from '../../custom-theme';
+import { normalizeApiUrl } from '../../config';
 
 export default function CustomServerScreen({
   navigation
@@ -55,14 +56,11 @@ export default function CustomServerScreen({
           ): Promise<void> => {
             setSubmitting(true);
             try {
-              // Ensure URL ends with a slash
-              let url = values.serverUrl;
-              if (!url.endsWith('/')) {
-                url = url + '/';
-              }
+              const url = normalizeApiUrl(values.serverUrl);
 
               // Save the custom URL to AsyncStorage
               await AsyncStorage.setItem('customApiUrl', url);
+              setCurrentUrl(url);
               showSnackBar(t('server_url_saved'), 'success');
 
               // Navigate back to login
@@ -91,6 +89,9 @@ export default function CustomServerScreen({
                 onBlur={handleBlur('serverUrl')}
                 onChangeText={handleChange('serverUrl')}
                 value={values.serverUrl}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
                 mode="outlined"
                 style={{ marginBottom: 10 }}
                 placeholder="https://your-server-url.com"

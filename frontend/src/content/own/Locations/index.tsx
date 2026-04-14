@@ -483,6 +483,11 @@ function Locations() {
       required: true
     },
     {
+      name: 'trafficLightEnabled',
+      type: 'checkbox',
+      label: t('traffic_light_location')
+    },
+    {
       name: 'parentLocation',
       type: 'select',
       type2: 'parentLocation',
@@ -700,6 +705,8 @@ function Locations() {
             submitText={t('save')}
             values={{
               ...currentLocation,
+              trafficLightEnabled:
+                currentLocation?.trafficLightEnabled ?? false,
               title: currentLocation?.name,
               workers: currentLocation?.workers.map((worker) => {
                 return {
@@ -840,27 +847,27 @@ function Locations() {
   ).sort((left, right) => left.localeCompare(right));
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const filteredTrafficLightMapPoints = trafficLightMapPoints.filter((point) => {
-    const matchesStatus =
-      trafficLightStatusFilter === ALL_FILTER_VALUE ||
-      point.currentStatus === trafficLightStatusFilter;
-    const matchesDistrict =
-      trafficLightDistrictFilter === ALL_FILTER_VALUE ||
-      point.district === trafficLightDistrictFilter;
-    const matchesSearch =
-      !normalizedSearchQuery ||
-      [
-        point.name,
-        point.address,
-        point.poleCode,
-        point.district,
-        point.ward
-      ].some((value) =>
-        value?.toLowerCase().includes(normalizedSearchQuery)
-      );
+  const filteredTrafficLightMapPoints = trafficLightMapPoints.filter(
+    (point) => {
+      const matchesStatus =
+        trafficLightStatusFilter === ALL_FILTER_VALUE ||
+        point.currentStatus === trafficLightStatusFilter;
+      const matchesDistrict =
+        trafficLightDistrictFilter === ALL_FILTER_VALUE ||
+        point.district === trafficLightDistrictFilter;
+      const matchesSearch =
+        !normalizedSearchQuery ||
+        [
+          point.name,
+          point.address,
+          point.poleCode,
+          point.district,
+          point.ward
+        ].some((value) => value?.toLowerCase().includes(normalizedSearchQuery));
 
-    return matchesStatus && matchesDistrict && matchesSearch;
-  });
+      return matchesStatus && matchesDistrict && matchesSearch;
+    }
+  );
 
   const trafficLightMapMarkers = filteredTrafficLightMapPoints
     .filter(
@@ -1049,7 +1056,7 @@ function Locations() {
                       id
                     };
                   })}
-                />
+              />
             </Card>
           )}
           {currentTab === 'trafficLightMap' && (
@@ -1099,7 +1106,8 @@ function Locations() {
                     ))}
                   </TextField>
                   <Typography variant="subtitle2" color="text.secondary">
-                    {filteredTrafficLightMapPoints.length} {t('traffic_light_point')}
+                    {filteredTrafficLightMapPoints.length}{' '}
+                    {t('traffic_light_point')}
                   </Typography>
                 </Stack>
               </Card>

@@ -23,6 +23,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import VerifyScreen from '../screens/auth/VerifyScreen';
 import LoadingScreen from '../screens/auth/LoadingScreen';
+import CustomServerScreen from '../screens/auth/CustomServerScreen';
 import WODetailsScreen from '../screens/workOrders/WODetailsScreen';
 import CreateWorkOrder from '../screens/workOrders/CreateWorkOrderScreen';
 import EditWorkOrder from '../screens/workOrders/EditWorkOrderScreen';
@@ -467,9 +468,7 @@ function AuthNavigator() {
       />
       <AuthStack.Screen
         name="CustomServer"
-        component={React.lazy(
-          () => import('../screens/auth/CustomServerScreen')
-        )}
+        component={CustomServerScreen}
         options={{ title: t('custom_server') }}
       />
     </AuthStack.Navigator>
