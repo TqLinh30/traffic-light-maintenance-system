@@ -9,18 +9,21 @@ export const googleMapsConfig = {
 const defaultApiUrl = Constants.expoConfig.extra.API_URL;
 export const IS_LOCALHOST = false;
 
+const normalizeApiUrl = (apiUrl: string): string => {
+  const trimmedApiUrl = apiUrl.trim();
+  return trimmedApiUrl.endsWith('/') ? trimmedApiUrl : `${trimmedApiUrl}/`;
+};
+
 // Function to get the API URL (either custom or default)
 export const getApiUrl = async (): Promise<string> => {
-  try {
-    // Try to get custom URL from AsyncStorage
-    const customUrl = await AsyncStorage.getItem('customApiUrl');
+  const customUrl = await AsyncStorage.getItem('customApiUrl');
+  const rawApiUrl = customUrl?.trim() || defaultApiUrl?.trim();
 
-    // Use custom URL if available, otherwise use default
-    const rawApiUrl = customUrl || defaultApiUrl;
-    return rawApiUrl.endsWith('/') ? rawApiUrl : rawApiUrl + '/';
-  } catch (error) {
-    // Fallback to default URL if there's an error
-    const rawApiUrl = defaultApiUrl;
-    return rawApiUrl.endsWith('/') ? rawApiUrl : rawApiUrl + '/';
+  if (!rawApiUrl) {
+    throw new Error(
+      'API URL is not configured. Open Custom Server and enter a reachable server URL, or rebuild the app with API_URL.'
+    );
   }
+
+  return normalizeApiUrl(rawApiUrl);
 };

@@ -15,9 +15,10 @@ import { Field, Formik } from 'formik';
 import * as Yup from 'yup';
 import CustomSwitch from '../../components/form/CustomSwitch';
 import useAuth from '../../../../hooks/useAuth';
-import internationalization, {
-  loadLanguage,
-  supportedLanguages
+import {
+  normalizeLanguageCode,
+  supportedLanguages,
+  switchAppLanguage
 } from '../../../../i18n/i18n';
 import { useDispatch, useSelector } from '../../../../store';
 import { getCurrencies } from '../../../../slices/currency';
@@ -39,12 +40,8 @@ const onOpenApiDocs = async () => {
   window.open(apiUrl + 'swagger-ui/index.html', '_blank');
 };
 function GeneralSettings() {
-  const { t }: { t: any } = useTranslation();
+  const { t, i18n }: { t: any; i18n: any } = useTranslation();
   const [openDeleteDemo, setOpenDeleteDemo] = useState<boolean>(false);
-  const switchLanguage = async ({ lng }: { lng: any }) => {
-    await loadLanguage(lng);
-    internationalization.changeLanguage(lng);
-  };
   const { showSnackBar } = useContext(CustomSnackBarContext);
   const { patchGeneralPreferences, companySettings, hasFeature } = useAuth();
   const { generalPreferences } = companySettings;
@@ -139,6 +136,7 @@ function GeneralSettings() {
     <Grid item xs={12}>
       <Box p={4}>
         <Formik
+          enableReinitialize
           initialValues={generalPreferences}
           validationSchema={Yup.object().shape({
             language: Yup.string(),
@@ -161,6 +159,7 @@ function GeneralSettings() {
             handleChange,
             handleSubmit,
             isSubmitting,
+            setFieldValue,
             touched,
             values
           }) => (
@@ -172,17 +171,19 @@ function GeneralSettings() {
                       <Typography variant="h6" sx={{ mb: 0.5 }}>
                         {t('language')}
                       </Typography>
-                      <Field
-                        onChange={(event) => {
-                          patchGeneralPreferences({
-                            language: event.target.value
-                          });
-                          switchLanguage({
-                            lng: event.target.value.toLowerCase()
+                      <Select
+                        onChange={async (event) => {
+                          const selectedLanguage = event.target
+                            .value as GeneralPreferences['language'];
+                          setFieldValue('language', selectedLanguage);
+                          await switchAppLanguage(selectedLanguage);
+                          await patchGeneralPreferences({
+                            language: selectedLanguage
                           });
                         }}
-                        value={generalPreferences.language}
-                        as={Select}
+                        value={normalizeLanguageCode(
+                          i18n.language
+                        ).toUpperCase()}
                         name="language"
                       >
                         {supportedLanguages.map((language) => (
@@ -193,7 +194,7 @@ function GeneralSettings() {
                             {language.label}
                           </MenuItem>
                         ))}
-                      </Field>
+                      </Select>
                     </Grid>
                     <Grid item xs={12}>
                       <Typography variant="h6" sx={{ mb: 0.5 }}>

@@ -10,6 +10,7 @@ import com.grash.mapper.RequestMapper;
 import com.grash.model.*;
 import com.grash.model.enums.PortalFieldType;
 import com.grash.model.enums.Priority;
+import com.grash.model.enums.RequestSource;
 import com.grash.model.enums.RoleType;
 import com.grash.repository.FieldConfigurationRepository;
 import com.grash.repository.RequestRepository;
@@ -53,6 +54,10 @@ public class RequestService {
             throw new CustomException("You need a license to add voice notes", HttpStatus.FORBIDDEN);
         Long nextSequence = customSequenceService.getNextRequestSequence(company);
         request.setCustomId("R" + String.format("%06d", nextSequence));
+        request.setCompany(company);
+        if (request.getRequestSource() == null) {
+            request.setRequestSource(RequestSource.MANUAL);
+        }
 
         Request savedRequest = requestRepository.saveAndFlush(request);
         em.refresh(savedRequest);
@@ -67,6 +72,9 @@ public class RequestService {
         request.setCustomId("R" + String.format("%06d", nextSequence));
         request.setRequestPortal(requestPortal);
         request.setCompany(requestPortal.getCompany());
+        if (request.getRequestSource() == null) {
+            request.setRequestSource(RequestSource.PORTAL);
+        }
         RequestPortalField assetField =
                 requestPortal.getFields().stream().filter(field -> field.getType().equals(PortalFieldType.ASSET) && field.getAsset() != null).findFirst().orElse(null);
         RequestPortalField locationField =

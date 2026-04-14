@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -41,6 +42,9 @@ import { getAssetUrl } from '../../../utils/urlPaths';
 import useAuth from '../../../hooks/useAuth';
 import { PermissionEntity } from '../../../models/owns/role';
 import { PlanFeature } from '../../../models/owns/subscriptionPlan';
+import api from '../../../utils/api';
+import { TrafficLightPointDetailDTO } from '../../../models/owns/trafficLight';
+import TrafficLightPointPanel from './TrafficLightPointPanel';
 
 interface LocationDetailsProps {
   location: Location;
@@ -54,12 +58,17 @@ export default function LocationDetails(props: LocationDetailsProps) {
   const { getFormattedDate, uploadFiles } = useContext(CompanySettingsContext);
   const [openAddFloorPlan, setOpenAddFloorPlan] = useState<boolean>(false);
   const [currentTab, setCurrentTab] = useState<string>('assets');
+  const [trafficLightDetails, setTrafficLightDetails] =
+    useState<TrafficLightPointDetailDTO | null>(null);
+  const [loadingTrafficLightDetails, setLoadingTrafficLightDetails] =
+    useState<boolean>(false);
   const { assetsByLocation } = useSelector((state) => state.assets);
   const { workOrdersByLocation } = useSelector((state) => state.workOrders);
   const { floorPlansByLocation } = useSelector((state) => state.floorPlans);
   const {
     hasEditPermission,
     hasDeletePermission,
+    hasViewPermission,
     getFilteredFields,
     hasCreatePermission,
     hasFeature
@@ -71,11 +80,23 @@ export default function LocationDetails(props: LocationDetailsProps) {
   const navigate = useNavigate();
   const tabs = [
     { value: 'assets', label: t('assets') },
+    ...((loadingTrafficLightDetails || trafficLightDetails) &&
+    hasViewPermission(PermissionEntity.LOCATIONS)
+      ? [{ value: 'trafficLight', label: t('traffic_light_point') }]
+      : []),
     { value: 'files', label: t('files') },
     { value: 'workOrders', label: t('work_orders') },
     { value: 'floorPlans', label: t('floor_plans') },
     { value: 'people', label: t('people') }
   ];
+
+  const isNotFoundApiError = (error: unknown) => {
+    try {
+      return JSON.parse((error as Error).message)?.status === 404;
+    } catch {
+      return false;
+    }
+  };
 
   const fields: Array<IField> = [
     {
@@ -108,6 +129,47 @@ export default function LocationDetails(props: LocationDetailsProps) {
     dispatch(getWorkOrdersByLocation(location.id));
     dispatch(getFloorPlans(location.id));
   }, [location]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!hasViewPermission(PermissionEntity.LOCATIONS)) {
+      setTrafficLightDetails(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    setLoadingTrafficLightDetails(true);
+    api.get<TrafficLightPointDetailDTO>(`traffic-light-points/location/${location.id}`)
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+        setTrafficLightDetails(response);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+        setTrafficLightDetails(null);
+        setCurrentTab((previousTab) =>
+          previousTab === 'trafficLight' ? 'assets' : previousTab
+        );
+        if (!isNotFoundApiError(error)) {
+          console.error('Failed to load traffic light details', error);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoadingTrafficLightDetails(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [hasViewPermission, location.id]);
 
   const renderAddFloorPlanModal = () => (
     <Dialog
@@ -265,6 +327,24 @@ export default function LocationDetails(props: LocationDetailsProps) {
                   {t('no_asset_in_location')}
                 </Typography>
               </Stack>
+            )}
+          </Box>
+        )}
+        {currentTab === 'trafficLight' && (
+          <Box>
+            {loadingTrafficLightDetails ? (
+              <Stack
+                direction="row"
+                justifyContent="center"
+                width="100%"
+                py={4}
+              >
+                <CircularProgress />
+              </Stack>
+            ) : (
+              trafficLightDetails && (
+                <TrafficLightPointPanel details={trafficLightDetails} />
+              )
             )}
           </Box>
         )}

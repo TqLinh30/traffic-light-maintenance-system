@@ -21,7 +21,9 @@ public enum Language {
     NL,
     ZH_CN,
     ZH,
-    BA;
+    BA,
+    ZH_TW,
+    VI;
     //always add new languages at the end
     
     @JsonCreator
@@ -29,6 +31,6 @@ public enum Language {
         return Arrays.stream(Language.values())
                 .filter(lang -> lang.name().equalsIgnoreCase(value))
                 .findFirst()
-                .orElse(Language.EN); // This is your fallback
+            .orElse(Language.ZH_TW); // This is your fallback
     }
 }

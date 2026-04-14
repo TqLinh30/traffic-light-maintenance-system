@@ -5,13 +5,7 @@ import { AuthStackScreenProps } from '../../types';
 import { Formik } from 'formik';
 import { useTranslation } from 'react-i18next';
 import { useContext, useEffect, useState } from 'react';
-import {
-  Button,
-  HelperText,
-  Text,
-  TextInput,
-  useTheme
-} from 'react-native-paper';
+import { Button, HelperText, Text, TextInput } from 'react-native-paper';
 import { CustomSnackBarContext } from '../../contexts/CustomSnackBarContext';
 import * as React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';

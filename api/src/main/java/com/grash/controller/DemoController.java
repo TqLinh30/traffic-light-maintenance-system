@@ -64,7 +64,7 @@ public class DemoController {
             userSignupRequest.setPassword("demo1234");
             userSignupRequest.setPhone(UUID.randomUUID().toString().replace("-", ""));
             userSignupRequest.setCompanyName("Demo");
-            userSignupRequest.setLanguage(Language.EN);
+            userSignupRequest.setLanguage(Language.ZH_TW);
             userSignupRequest.setDemo(true);
             userSignupRequest.setSkipMailSending(true);
             SignupSuccessResponse<OwnUser> response = userService.signup(userSignupRequest);

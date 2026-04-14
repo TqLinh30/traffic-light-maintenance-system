@@ -19,7 +19,8 @@ import {
   HU,
   NL,
   CN,
-  BA
+  BA,
+  VN
 } from 'country-flag-icons/react/3x2';
 
 // ─── Lazy translation loaders ────────────────────────────────────────────────
@@ -38,7 +39,48 @@ const translationLoaders: Record<string, () => Promise<{ default: object }>> = {
   hu: () => import('./translations/hu'),
   nl: () => import('./translations/nl'),
   zh_cn: () => import('./translations/zh_cn'),
+  zh_tw: () => import('./translations/zh_tw'),
+  vi: () => import('./translations/vi'),
   ba: () => import('./translations/ba')
+};
+
+export const DEFAULT_LANGUAGE = 'zh_tw';
+
+export const normalizeLanguageCode = (
+  lang: string | null | undefined
+): string => {
+  const normalized = (lang ?? '').toLowerCase().replace(/-/g, '_');
+
+  if (!normalized) return DEFAULT_LANGUAGE;
+
+  if (
+    normalized === 'pt' ||
+    normalized === 'pt_br' ||
+    normalized.startsWith('pt_br_')
+  )
+    return 'pt_br';
+
+  if (
+    normalized === 'zh_tw' ||
+    normalized.startsWith('zh_tw_') ||
+    normalized === 'zh_hant' ||
+    normalized.startsWith('zh_hant_')
+  )
+    return 'zh_tw';
+
+  if (
+    normalized === 'zh' ||
+    normalized === 'zh_cn' ||
+    normalized.startsWith('zh_cn_') ||
+    normalized === 'zh_hans' ||
+    normalized.startsWith('zh_hans_')
+  )
+    return 'zh_cn';
+
+  if (translationLoaders[normalized]) return normalized;
+
+  const base = normalized.split('_')[0];
+  return translationLoaders[base] ? base : DEFAULT_LANGUAGE;
 };
 
 // ─── Lazy date-fns locale loaders ────────────────────────────────────────────
@@ -57,6 +99,8 @@ const dateLocaleLoaders: Record<string, () => Promise<DateLocale>> = {
   hu: () => import('date-fns/locale').then((m) => m.hu),
   nl: () => import('date-fns/locale').then((m) => m.nl),
   zh_cn: () => import('date-fns/locale').then((m) => m.zhCN),
+  zh_tw: () => import('date-fns/locale').then((m) => m.zhTW),
+  vi: () => import('date-fns/locale').then((m) => m.vi),
   ba: () => import('date-fns/locale').then((m) => m.bs)
 };
 
@@ -79,6 +123,9 @@ const calendarLocaleLoaders: Record<string, () => Promise<LocaleSingularArg>> =
     nl: () => import('@fullcalendar/core/locales/nl').then((m) => m.default),
     zh_cn: () =>
       import('@fullcalendar/core/locales/zh-cn').then((m) => m.default),
+    zh_tw: () =>
+      import('@fullcalendar/core/locales/zh-tw').then((m) => m.default),
+    vi: () => import('@fullcalendar/core/locales/vi').then((m) => m.default),
     ba: () => import('@fullcalendar/core/locales/bs').then((m) => m.default)
   };
 
@@ -91,7 +138,7 @@ i18n
     partialBundledLanguages: true,
     supportedLngs: Object.keys(translationLoaders),
     keySeparator: false,
-    fallbackLng: 'en',
+    fallbackLng: [DEFAULT_LANGUAGE, 'en'],
     react: {
       useSuspense: true
     },
@@ -103,14 +150,7 @@ i18n
       lookupQuerystring: 'lang',
       lookupLocalStorage: 'lang',
       caches: ['localStorage'],
-      convertDetectedLanguage: (lng) => {
-        const lower = lng.toLowerCase();
-        if (lower === 'pt' || lower === 'pt-br' || lower === 'pt_br')
-          return 'pt_br';
-        if (lower === 'zh' || lower === 'zh-cn' || lower === 'zh_cn')
-          return 'zh_cn';
-        return lower.split('-')[0].split('_')[0];
-      }
+      convertDetectedLanguage: (lng) => normalizeLanguageCode(lng)
     }
   });
 
@@ -125,23 +165,44 @@ i18n
  * i18n.changeLanguage('fr');
  */
 export const loadLanguage = async (lang: string): Promise<void> => {
+  const normalizedLang = normalizeLanguageCode(lang);
+
   // Always ensure English fallback is loaded first
   if (!i18n.hasResourceBundle('en', 'translation')) {
     const enModule = await translationLoaders['en']();
     i18n.addResourceBundle('en', 'translation', enModule.default, true, true);
-    await i18n.changeLanguage(lang); // this triggers the re-render
   }
 
-  if (lang === 'en') return;
+  if (normalizedLang === 'en') {
+    if (i18n.language !== 'en') {
+      await i18n.changeLanguage('en');
+    }
+    return;
+  }
 
-  const loader = translationLoaders[lang];
+  const loader = translationLoaders[normalizedLang];
   if (!loader) return;
 
-  if (!i18n.hasResourceBundle(lang, 'translation')) {
+  if (!i18n.hasResourceBundle(normalizedLang, 'translation')) {
     const module = await loader();
-    i18n.addResourceBundle(lang, 'translation', module.default, true, true);
-    await i18n.changeLanguage(lang); // this triggers the re-render
+    i18n.addResourceBundle(
+      normalizedLang,
+      'translation',
+      module.default,
+      true,
+      true
+    );
   }
+
+  if (i18n.language !== normalizedLang) {
+    await i18n.changeLanguage(normalizedLang);
+  }
+};
+
+export const switchAppLanguage = async (lang: string): Promise<string> => {
+  const normalizedLang = normalizeLanguageCode(lang);
+  await loadLanguage(normalizedLang);
+  return normalizedLang;
 };
 
 /**
@@ -149,7 +210,8 @@ export const loadLanguage = async (lang: string): Promise<void> => {
  * Falls back to enUS if the language is not found.
  */
 export const getDateLocale = async (lang: string): Promise<DateLocale> => {
-  const loader = dateLocaleLoaders[lang] ?? dateLocaleLoaders['en'];
+  const normalizedLang = normalizeLanguageCode(lang);
+  const loader = dateLocaleLoaders[normalizedLang] ?? dateLocaleLoaders['en'];
   return loader();
 };
 
@@ -160,7 +222,9 @@ export const getDateLocale = async (lang: string): Promise<DateLocale> => {
 export const getCalendarLocale = async (
   lang: string
 ): Promise<LocaleSingularArg> => {
-  const loader = calendarLocaleLoaders[lang] ?? calendarLocaleLoaders['en'];
+  const normalizedLang = normalizeLanguageCode(lang);
+  const loader =
+    calendarLocaleLoaders[normalizedLang] ?? calendarLocaleLoaders['en'];
   return loader();
 };
 
@@ -181,6 +245,8 @@ export type SupportedLanguage =
   | 'HU'
   | 'NL'
   | 'ZH_CN'
+  | 'ZH_TW'
+  | 'VI'
   | 'BA';
 
 export const supportedLanguages: {
@@ -201,12 +267,14 @@ export const supportedLanguages: {
   { code: 'ru', label: 'Russian', Icon: RU },
   { code: 'hu', label: 'Hungarian', Icon: HU },
   { code: 'nl', label: 'Dutch', Icon: NL },
-  { code: 'zh_cn', label: 'Chinese (Simplified)', Icon: CN },
+  { code: 'zh_cn', label: '简体中文', Icon: CN },
+  { code: 'zh_tw', label: '繁體中文', Icon: CN },
+  { code: 'vi', label: 'Tiếng Việt', Icon: VN },
   { code: 'ba', label: 'Bosnian', Icon: BA }
 ];
 
 export const getSupportedLanguage = (lang: string) =>
-  supportedLanguages.find(({ code }) => code === lang) ??
-  supportedLanguages.find(({ code }) => code === 'en')!;
+  supportedLanguages.find(({ code }) => code === normalizeLanguageCode(lang)) ??
+  supportedLanguages.find(({ code }) => code === DEFAULT_LANGUAGE)!;
 
 export default i18n;

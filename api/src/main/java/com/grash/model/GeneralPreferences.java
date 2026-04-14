@@ -23,7 +23,7 @@ public class GeneralPreferences {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    private Language language = Language.EN;
+    private Language language = Language.ZH_TW;
 
     private DateFormat dateFormat = DateFormat.MMDDYY;
 

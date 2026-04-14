@@ -49,7 +49,10 @@ import { useSnackbar } from 'notistack';
 import { submitPublicRequest } from '../../../../../slices/request';
 import api from '../../../../../utils/api';
 import { uploadToRequestPortal } from '../../../../../slices/file';
-import { supportedLanguages } from '../../../../../i18n/i18n';
+import {
+  supportedLanguages,
+  switchAppLanguage
+} from '../../../../../i18n/i18n';
 import { useBrand } from '../../../../../hooks/useBrand';
 import { recaptchaSiteKey } from '../../../../../config';
 import { Helmet } from 'react-helmet-async';
@@ -106,7 +109,7 @@ export default function RequestPortalPublicPage() {
     if (portal) {
       const configs = buildDefaultConfigs(portal.fields);
       setFieldConfigs(configs);
-      i18n.changeLanguage(portal.companyLanguage.toLowerCase());
+      void switchAppLanguage(portal.companyLanguage);
     }
   }, [portal]);
 
@@ -308,7 +311,7 @@ export default function RequestPortalPublicPage() {
       <Select
         value={i18n.language}
         onChange={(e) => {
-          i18n.changeLanguage(e.target.value);
+          void switchAppLanguage(e.target.value);
         }}
         displayEmpty
         variant="outlined"

@@ -1,0 +1,152 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="2026_04_12_traffic_light_point_001" author="OpenAI">
+        <createTable tableName="traffic_light_point">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_traffic_light_point_company"
+                             references="company(id)"/>
+            </column>
+            <column name="atlas_location_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_traffic_light_point_location"
+                             references="location(id)"/>
+            </column>
+            <column name="pole_code" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="district" type="varchar(255)"/>
+            <column name="ward" type="varchar(255)"/>
+            <column name="road_name" type="varchar(255)"/>
+            <column name="intersection_name" type="varchar(255)"/>
+            <column name="main_asset_id" type="bigint">
+                <constraints foreignKeyName="fk_traffic_light_point_main_asset" references="asset(id)"/>
+            </column>
+            <column name="traffic_light_type" type="varchar(255)"/>
+            <column name="controller_type" type="varchar(255)"/>
+            <column name="installation_date" type="TIMESTAMP"/>
+            <column name="maintenance_cycle_days" type="integer"/>
+            <column name="is_active" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT"/>
+            <column name="updated_by" type="BIGINT"/>
+        </createTable>
+
+        <addUniqueConstraint tableName="traffic_light_point"
+                             constraintName="uk_traffic_light_point_location"
+                             columnNames="atlas_location_id"/>
+        <addUniqueConstraint tableName="traffic_light_point"
+                             constraintName="uk_traffic_light_point_company_pole_code"
+                             columnNames="company_id,pole_code"/>
+
+        <createIndex tableName="traffic_light_point" indexName="idx_tlp_pole_code">
+            <column name="pole_code"/>
+        </createIndex>
+        <createIndex tableName="traffic_light_point" indexName="idx_tlp_is_active">
+            <column name="is_active"/>
+        </createIndex>
+        <createIndex tableName="traffic_light_point" indexName="idx_tlp_main_asset_id">
+            <column name="main_asset_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026_04_12_qr_tag_002" author="OpenAI">
+        <createTable tableName="qr_tag">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="company_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_qr_tag_company"
+                             references="company(id)"/>
+            </column>
+            <column name="traffic_light_point_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_qr_tag_traffic_light_point"
+                             references="traffic_light_point(id)"/>
+            </column>
+            <column name="qr_public_code" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="integer" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="printed_at" type="TIMESTAMP"/>
+            <column name="installed_at" type="TIMESTAMP"/>
+            <column name="deactivated_at" type="TIMESTAMP"/>
+            <column name="notes" type="varchar(2000)"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT"/>
+            <column name="updated_by" type="BIGINT"/>
+        </createTable>
+
+        <addUniqueConstraint tableName="qr_tag"
+                             constraintName="uk_qr_tag_public_code"
+                             columnNames="qr_public_code"/>
+
+        <createIndex tableName="qr_tag" indexName="idx_qr_tag_point_id">
+            <column name="traffic_light_point_id"/>
+        </createIndex>
+        <createIndex tableName="qr_tag" indexName="idx_qr_tag_status">
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2026_04_12_request_qr_columns_003" author="OpenAI">
+        <addColumn tableName="request">
+            <column name="request_source" type="varchar(50)"/>
+            <column name="qr_tag_id" type="bigint"/>
+            <column name="pole_code" type="varchar(255)"/>
+            <column name="fault_type" type="varchar(255)"/>
+            <column name="scan_timestamp" type="TIMESTAMP"/>
+            <column name="scan_latitude" type="double precision"/>
+            <column name="scan_longitude" type="double precision"/>
+            <column name="safety_severity" type="varchar(50)"/>
+        </addColumn>
+
+        <addForeignKeyConstraint baseTableName="request"
+                                 baseColumnNames="qr_tag_id"
+                                 constraintName="fk_request_qr_tag"
+                                 referencedTableName="qr_tag"
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"/>
+
+        <createIndex tableName="request" indexName="idx_request_request_source">
+            <column name="request_source"/>
+        </createIndex>
+        <createIndex tableName="request" indexName="idx_request_pole_code">
+            <column name="pole_code"/>
+        </createIndex>
+        <createIndex tableName="request" indexName="idx_request_qr_tag_id">
+            <column name="qr_tag_id"/>
+        </createIndex>
+
+        <update tableName="request">
+            <column name="request_source" value="MANUAL"/>
+            <where>request_source IS NULL</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="2026_04_12_traffic_light_qr_sequences_004" author="OpenAI">
+        <createSequence sequenceName="traffic_light_point_seq" startValue="1" incrementBy="50"/>
+        <createSequence sequenceName="qr_tag_seq" startValue="1" incrementBy="50"/>
+    </changeSet>
+</databaseChangeLog>

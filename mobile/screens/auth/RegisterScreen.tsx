@@ -15,7 +15,6 @@ import { IS_LOCALHOST } from '../../config';
 import { useContext, useState } from 'react';
 import {
   Button,
-  Checkbox,
   HelperText,
   Text,
   TextInput,
@@ -23,6 +22,7 @@ import {
 } from 'react-native-paper';
 import { CustomSnackBarContext } from '../../contexts/CustomSnackBarContext';
 import * as React from 'react';
+import { getErrorMessage } from '../../utils/api';
 
 export default function RegisterScreen({
   navigation
@@ -84,7 +84,10 @@ export default function RegisterScreen({
                 }
               })
               .catch((err) => {
-                showSnackBar(t('registration_error'), 'error');
+                showSnackBar(
+                  getErrorMessage(err, t('registration_error')),
+                  'error'
+                );
               })
               .finally(() => {
                 setStatus({ success: true });

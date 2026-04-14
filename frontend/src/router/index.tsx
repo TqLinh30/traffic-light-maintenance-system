@@ -27,6 +27,12 @@ const RequestPortalPublicPage = Loader(
   )
 );
 
+const TrafficLightQrPublicPage = Loader(
+  lazy(() =>
+    import('../content/own/TrafficLightQr/PublicPage/TrafficLightQrPublicPage')
+  )
+);
+
 const router: RouteObject[] = [
   {
     path: 'account',
@@ -40,6 +46,18 @@ const router: RouteObject[] = [
   {
     path: 'request-portal/:uuid',
     element: <RequestPortalPublicPage />
+  },
+  {
+    path: 'traffic-light/:qrPublicCode',
+    element: <TrafficLightQrPublicPage />
+  },
+  {
+    path: 'traffic-light/:qrPublicCode/report',
+    element: <TrafficLightQrPublicPage />
+  },
+  {
+    path: 'traffic-light/:qrPublicCode/success',
+    element: <TrafficLightQrPublicPage />
   },
   {
     path: 'app',

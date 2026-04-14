@@ -23,7 +23,7 @@ import { Stomp } from '@stomp/stompjs';
 import UserSettings from '../models/userSettings';
 import CompanySettings from '../models/companySettings';
 import { GeneralPreferences } from '../models/generalPreferences';
-import internationalization from '../i18n/i18n';
+import internationalization, { normalizeLanguageCode } from '../i18n/i18n';
 import { FieldConfiguration, FieldType } from '../models/fieldConfiguration';
 import { Company } from '../models/company';
 import { PermissionEntity } from '../models/role';
@@ -574,8 +574,8 @@ export const AuthProvider: FC<AuthProviderProps> = (props) => {
     registerStompClient();
     return disconnect;
   }, [state?.user?.id, state?.userSettings, stompClient]);
-  const switchLanguage = ({ lng }: { lng: any }) => {
-    internationalization.changeLanguage(lng);
+  const switchLanguage = ({ lng }: { lng: string }) => {
+    return internationalization.changeLanguage(normalizeLanguageCode(lng));
   };
   const updateUserInfos = async () => {
     const user = await getUserInfos();
@@ -659,8 +659,8 @@ export const AuthProvider: FC<AuthProviderProps> = (props) => {
       api.post<{ success: boolean }>(`notifications/push-token`, { token });
   };
   const setupUser = async (companySettings: CompanySettings) => {
-    switchLanguage({
-      lng: companySettings.generalPreferences.language.toLowerCase()
+    await switchLanguage({
+      lng: companySettings.generalPreferences.language
     });
     checkPushNotificationState();
   };

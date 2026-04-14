@@ -188,4 +188,8 @@
     <include file="changelog/2026_03_04_00000000002_add_request_portal_id_to_request.xml" relativeToChangelogFile="true"/>
     <include file="changelog/2026_03_09_1773073802_remove_duplicate_roles.xml"
              relativeToChangelogFile="true"/>
+    <include file="changelog/2026_04_12_1775970000_default_language_zh_tw.xml"
+             relativeToChangelogFile="true"/>
+    <include file="changelog/2026_04_12_1776001000_traffic_light_qr.xml"
+             relativeToChangelogFile="true"/>
 </databaseChangeLog>

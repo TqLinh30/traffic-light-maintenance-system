@@ -67,6 +67,22 @@ import SearchInput from '../components/SearchInput';
 import * as React from 'react';
 import WorkOrder from '../../../models/owns/workOrder';
 
+const toReadableLabel = (value?: string | null) => {
+  if (!value) {
+    return '-';
+  }
+
+  if (value === 'QR') {
+    return 'QR';
+  }
+
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+};
+
 function Requests() {
   const { t }: { t: any } = useTranslation();
   const { setTitle } = useContext(TitleContext);
@@ -260,6 +276,41 @@ function Requests() {
         <Box sx={{ fontWeight: 'bold' }}>{info.getValue()}</Box>
       ),
       size: 150
+    }),
+    columnHelper.accessor((row) => row.poleCode || '', {
+      id: 'poleCode',
+      header: () => t('pole_code'),
+      cell: (info) => info.getValue() || '-',
+      size: 120,
+      enableSorting: false
+    }),
+    columnHelper.accessor((row) => row.requestSource || '', {
+      id: 'requestSource',
+      header: () => t('request_source'),
+      cell: (info) => toReadableLabel(info.getValue()),
+      size: 120,
+      enableSorting: false
+    }),
+    columnHelper.accessor((row) => row.location?.name || '', {
+      id: 'location',
+      header: () => t('location'),
+      cell: (info) => info.getValue() || '-',
+      size: 150,
+      enableSorting: false
+    }),
+    columnHelper.accessor((row) => row.faultType || '', {
+      id: 'faultType',
+      header: () => t('fault_type'),
+      cell: (info) => toReadableLabel(info.getValue()),
+      size: 140,
+      enableSorting: false
+    }),
+    columnHelper.accessor((row) => row.safetySeverity || '', {
+      id: 'safetySeverity',
+      header: () => t('safety_severity'),
+      cell: (info) => toReadableLabel(info.getValue()),
+      size: 140,
+      enableSorting: false
     }),
     columnHelper.accessor('description', {
       id: 'description',

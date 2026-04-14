@@ -29,7 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { UtmTrackerProvider } from '@nik0di3m/utm-tracker-hook';
 import { useLicenseEntitlement } from './hooks/useLicenseEntitlement';
 import { initializePaddle } from '@paddle/paddle-js';
-import { loadLanguage, supportedLanguages } from './i18n/i18n';
+import { DEFAULT_LANGUAGE, loadLanguage, supportedLanguages } from './i18n/i18n';
 import MobileAppDownloadDialog from './components/MobileAppDownloadDialog';
 import { useMobileAppPrompt } from './hooks/useMobileAppPrompt';
 
@@ -110,7 +110,7 @@ function App() {
   const { shouldShowPrompt, dismissPrompt } = useMobileAppPrompt();
 
   useEffect(() => {
-    loadLanguage(i18n.language || 'en');
+    loadLanguage(i18n.language || DEFAULT_LANGUAGE);
   }, [i18n.language]);
 
   useEffect(() => {

@@ -21,5 +21,13 @@ public interface RequestRepository extends JpaRepository<Request, Long>, JpaSpec
 
     List<Request> findByCategory_IdAndCreatedAtBetween(Long id, Date start, Date end);
 
+    boolean existsByLocation_IdAndWorkOrderIsNullAndCancelledFalse(Long locationId);
+
+    @Query("SELECT DISTINCT r.location.id FROM Request r " +
+            "WHERE r.location.id IN :locationIds " +
+            "AND r.workOrder IS NULL " +
+            "AND r.cancelled = false")
+    List<Long> findOpenLocationIds(@Param("locationIds") Collection<Long> locationIds);
+
     void deleteByCompany_IdAndIsDemoTrue(Long companyId);
 }

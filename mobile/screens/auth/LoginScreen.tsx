@@ -9,8 +9,8 @@ import { useContext, useState } from 'react';
 import { Button, HelperText, Text, TextInput } from 'react-native-paper';
 import { CustomSnackBarContext } from '../../contexts/CustomSnackBarContext';
 import * as React from 'react';
-import { Asset } from 'expo-asset';
 import { useAppTheme } from '../../custom-theme';
+import { getErrorMessage } from '../../utils/api';
 
 export default function LoginScreen({
   navigation
@@ -53,7 +53,10 @@ export default function LoginScreen({
             setSubmitting(true);
             return login(values.email, values.password)
               .catch((err) => {
-                showSnackBar(t('wrong_credentials'), 'error');
+                showSnackBar(
+                  getErrorMessage(err, t('wrong_credentials')),
+                  'error'
+                );
                 setStatus({ success: false });
               })
               .finally(() => {

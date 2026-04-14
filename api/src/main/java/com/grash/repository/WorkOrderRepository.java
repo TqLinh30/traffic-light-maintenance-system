@@ -32,6 +32,21 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrder, Long>, Jpa
 
     Collection<WorkOrder> findByLocation_Id(Long id);
 
+    @Query("SELECT DISTINCT wo FROM WorkOrder wo " +
+            "LEFT JOIN FETCH wo.location " +
+            "LEFT JOIN FETCH wo.asset " +
+            "LEFT JOIN FETCH wo.parentPreventiveMaintenance " +
+            "WHERE wo.location.id IN :locationIds")
+    List<WorkOrder> findByLocationIdsWithDetails(@Param("locationIds") Collection<Long> locationIds);
+
+    @Query("SELECT DISTINCT wo FROM WorkOrder wo " +
+            "LEFT JOIN FETCH wo.location " +
+            "LEFT JOIN FETCH wo.asset " +
+            "LEFT JOIN FETCH wo.parentPreventiveMaintenance " +
+            "WHERE wo.location.id IN :locationIds OR wo.asset.id IN :assetIds")
+    List<WorkOrder> findByLocationIdsOrAssetIdsWithDetails(@Param("locationIds") Collection<Long> locationIds,
+                                                           @Param("assetIds") Collection<Long> assetIds);
+
     Page<WorkOrder> findByParentPreventiveMaintenance_Id(Long id, Pageable pageable);
 
     Collection<WorkOrder> findByPrimaryUser_Id(Long id);

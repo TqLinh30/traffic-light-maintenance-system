@@ -6,3 +6,7 @@
 atlas_backups
 docker-compose-dev.yml
 logo
+
+# Local build/cache artifacts
+.m2/
+frontend/.expo/

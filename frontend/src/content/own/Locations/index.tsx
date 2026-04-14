@@ -1,7 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import {
   Box,
-  Button,
   Card,
   CircularProgress,
   Dialog,
@@ -56,7 +55,6 @@ import MoreVertTwoToneIcon from '@mui/icons-material/MoreVertTwoTone';
 import { PlanFeature } from '../../../models/owns/subscriptionPlan';
 import { Pageable, Sort } from '../../../models/owns/page';
 import { googleMapsConfig } from '../../../config';
-import { getErrorMessage } from '../../../utils/api';
 import SplitButton from '../components/SplitButton';
 import CustomDatagrid2, {
   CustomDatagridColumn2
@@ -69,11 +67,44 @@ import {
 import useTableState from '../../../hooks/useTableState';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import SearchTwoToneIcon from '@mui/icons-material/SearchTwoTone';
-import InputAdornment from '@mui/material/InputAdornment';
 import SearchInput from '../components/SearchInput';
+import api, { getErrorMessage } from '../../../utils/api';
+import {
+  TrafficLightMapPointDTO,
+  TrafficLightStatus
+} from '../../../models/owns/trafficLight';
 
 const HIERARCHY_ZERO_PAGE_SIZE = 40;
+const ALL_FILTER_VALUE = 'ALL';
+const trafficLightStatusOptions: TrafficLightStatus[] = [
+  'HEALTHY',
+  'MAINTENANCE_DUE_SOON',
+  'MAINTENANCE_OVERDUE',
+  'NEEDS_REPAIR',
+  'IN_PROGRESS',
+  'INACTIVE'
+];
+
+const trafficLightMarkerColors: Record<TrafficLightStatus, string> = {
+  HEALTHY: '#2e7d32',
+  MAINTENANCE_DUE_SOON: '#ed6c02',
+  MAINTENANCE_OVERDUE: '#d32f2f',
+  NEEDS_REPAIR: '#8e24aa',
+  IN_PROGRESS: '#0288d1',
+  INACTIVE: '#757575'
+};
+
+const toReadableLabel = (value?: string | null) =>
+  value
+    ? value
+        .toLowerCase()
+        .split('_')
+        .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+        .join(' ')
+    : '';
+
+const getTrafficLightMarkerColor = (status: TrafficLightStatus) =>
+  trafficLightMarkerColors[status] ?? '#757575';
 
 function Locations() {
   const { t }: { t: any } = useTranslation();
@@ -99,7 +130,12 @@ function Locations() {
   const { exportEntity, loadingExport } = useExport();
   const tabs = [
     { value: 'list', label: t('list_view') },
-    ...(apiKey ? [{ value: 'map', label: t('map_view') }] : [])
+    ...(apiKey
+      ? [
+          { value: 'map', label: t('map_view') },
+          { value: 'trafficLightMap', label: t('traffic_light_map') }
+        ]
+      : [])
   ];
   const handleTabsChange = (_event: ChangeEvent<{}>, value: string): void => {
     setCurrentTab(value);
@@ -127,6 +163,15 @@ function Locations() {
     size: HIERARCHY_ZERO_PAGE_SIZE
   });
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [trafficLightMapPoints, setTrafficLightMapPoints] = useState<
+    TrafficLightMapPointDTO[]
+  >([]);
+  const [loadingTrafficLightMap, setLoadingTrafficLightMap] =
+    useState<boolean>(false);
+  const [trafficLightStatusFilter, setTrafficLightStatusFilter] =
+    useState<string>(ALL_FILTER_VALUE);
+  const [trafficLightDistrictFilter, setTrafficLightDistrictFilter] =
+    useState<string>(ALL_FILTER_VALUE);
 
   // View type state
   const [hierarchySorting, setHierarchySorting] = useState<SortingState>([]);
@@ -258,6 +303,42 @@ function Locations() {
       handleOpenDetails(Number(locationId));
     }
   }, [locations]);
+
+  const loadTrafficLightMapPoints = React.useCallback(async () => {
+    if (!hasViewPermission(PermissionEntity.LOCATIONS)) {
+      return;
+    }
+
+    setLoadingTrafficLightMap(true);
+    try {
+      const response = await api.get<TrafficLightMapPointDTO[]>(
+        '/traffic-light-points/map'
+      );
+      setTrafficLightMapPoints(response);
+    } catch (err) {
+      showSnackBar(
+        getErrorMessage(err, 'Failed to load traffic light map'),
+        'error'
+      );
+    } finally {
+      setLoadingTrafficLightMap(false);
+    }
+  }, [hasViewPermission, showSnackBar]);
+
+  useEffect(() => {
+    if (
+      currentTab === 'trafficLightMap' &&
+      trafficLightMapPoints.length === 0 &&
+      !loadingTrafficLightMap
+    ) {
+      loadTrafficLightMapPoints();
+    }
+  }, [
+    currentTab,
+    loadTrafficLightMapPoints,
+    loadingTrafficLightMap,
+    trafficLightMapPoints.length
+  ]);
 
   const formatValues = (values) => {
     const newValues = { ...values };
@@ -749,6 +830,59 @@ function Locations() {
           row.address?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : tableData;
+
+  const districtOptions = Array.from(
+    new Set(
+      trafficLightMapPoints
+        .map((point) => point.district?.trim())
+        .filter((district): district is string => Boolean(district))
+    )
+  ).sort((left, right) => left.localeCompare(right));
+
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredTrafficLightMapPoints = trafficLightMapPoints.filter((point) => {
+    const matchesStatus =
+      trafficLightStatusFilter === ALL_FILTER_VALUE ||
+      point.currentStatus === trafficLightStatusFilter;
+    const matchesDistrict =
+      trafficLightDistrictFilter === ALL_FILTER_VALUE ||
+      point.district === trafficLightDistrictFilter;
+    const matchesSearch =
+      !normalizedSearchQuery ||
+      [
+        point.name,
+        point.address,
+        point.poleCode,
+        point.district,
+        point.ward
+      ].some((value) =>
+        value?.toLowerCase().includes(normalizedSearchQuery)
+      );
+
+    return matchesStatus && matchesDistrict && matchesSearch;
+  });
+
+  const trafficLightMapMarkers = filteredTrafficLightMapPoints
+    .filter(
+      (point) =>
+        point.latitude !== null &&
+        point.latitude !== undefined &&
+        point.longitude !== null &&
+        point.longitude !== undefined
+    )
+    .map((point) => ({
+      id: point.atlasLocationId,
+      title: point.name || point.poleCode,
+      subtitle: `${point.poleCode} - ${toReadableLabel(point.currentStatus)}`,
+      address: point.address,
+      coordinates: {
+        lat: point.latitude,
+        lng: point.longitude
+      },
+      href: `/app/locations/${point.atlasLocationId}`,
+      markerColor: getTrafficLightMarkerColor(point.currentStatus)
+    }));
+
   // Handle pagination change for hierarchy view
   const handlePaginationChange = (newPagination: {
     pageIndex: number;
@@ -815,7 +949,16 @@ function Locations() {
             )}
             <Stack direction={'row'} alignItems="center" spacing={1}>
               <SearchInput onChange={(e) => setSearchQuery(e.target.value)} />
-              <IconButton onClick={() => handleReset(true)} color="primary">
+              <IconButton
+                onClick={() => {
+                  if (currentTab === 'trafficLightMap') {
+                    loadTrafficLightMapPoints();
+                    return;
+                  }
+                  handleReset(true);
+                }}
+                color="primary"
+              >
                 <ReplayTwoToneIcon />
               </IconButton>
               <IconButton onClick={handleOpenMenu} color="primary">
@@ -906,8 +1049,96 @@ function Locations() {
                       id
                     };
                   })}
-              />
+                />
             </Card>
+          )}
+          {currentTab === 'trafficLightMap' && (
+            <Stack spacing={2}>
+              <Card sx={{ p: 2 }}>
+                <Stack
+                  direction={{ xs: 'column', md: 'row' }}
+                  spacing={2}
+                  alignItems={{ xs: 'stretch', md: 'center' }}
+                >
+                  <TextField
+                    select
+                    size="small"
+                    label={t('status')}
+                    value={trafficLightStatusFilter}
+                    onChange={(event) =>
+                      setTrafficLightStatusFilter(event.target.value)
+                    }
+                    sx={{ minWidth: 220 }}
+                  >
+                    <MenuItem value={ALL_FILTER_VALUE}>
+                      {t('all_statuses')}
+                    </MenuItem>
+                    {trafficLightStatusOptions.map((status) => (
+                      <MenuItem key={status} value={status}>
+                        {toReadableLabel(status)}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    size="small"
+                    label={t('district')}
+                    value={trafficLightDistrictFilter}
+                    onChange={(event) =>
+                      setTrafficLightDistrictFilter(event.target.value)
+                    }
+                    sx={{ minWidth: 220 }}
+                  >
+                    <MenuItem value={ALL_FILTER_VALUE}>
+                      {t('all_districts')}
+                    </MenuItem>
+                    {districtOptions.map((district) => (
+                      <MenuItem key={district} value={district}>
+                        {district}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    {filteredTrafficLightMapPoints.length} {t('traffic_light_point')}
+                  </Typography>
+                </Stack>
+              </Card>
+              <Card
+                sx={{
+                  p: 2,
+                  justifyContent: 'center',
+                  minHeight: 540
+                }}
+              >
+                {loadingTrafficLightMap ? (
+                  <Box
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    minHeight={500}
+                  >
+                    <CircularProgress />
+                  </Box>
+                ) : trafficLightMapMarkers.length > 0 ? (
+                  <Map
+                    dimensions={{ width: 1000, height: 500 }}
+                    locations={trafficLightMapMarkers}
+                  />
+                ) : (
+                  <Box
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    minHeight={500}
+                    textAlign="center"
+                  >
+                    <Typography variant="subtitle1" color="text.secondary">
+                      {t('no_traffic_light_points')}
+                    </Typography>
+                  </Box>
+                )}
+              </Card>
+            </Stack>
           )}
         </Box>
         {renderLocationAddModal()}

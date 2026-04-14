@@ -73,6 +73,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/files/upload/request-portal/{uuid}").permitAll()
                         .requestMatchers("/assets/public/mini/{uuid}").permitAll()
                         .requestMatchers("/locations/public/mini/{uuid}").permitAll()
+                        .requestMatchers("/traffic-light-qr/**").permitAll()
 //                .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/swagger-ui.html").permitAll()

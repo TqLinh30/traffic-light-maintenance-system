@@ -50,6 +50,22 @@ interface RequestDetailsProps {
   onClose: () => void;
 }
 
+const toReadableLabel = (value?: string | null) => {
+  if (!value) {
+    return null;
+  }
+
+  if (value === 'QR') {
+    return 'QR';
+  }
+
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+};
+
 export default function RequestDetails({
   request,
   handleOpenUpdate,
@@ -73,6 +89,10 @@ export default function RequestDetails({
   const [isImageViewerOpen, setIsImageViewerOpen] = useState<boolean>(false);
   const [openCancellationModal, setOpenCancellationModal] =
     useState<boolean>(false);
+  const scanCoordinates =
+    request.scanLatitude != null && request.scanLongitude != null
+      ? `${request.scanLatitude.toFixed(6)}, ${request.scanLongitude.toFixed(6)}`
+      : null;
   const onApprove = () => {
     setApproving(true);
     dispatch(
@@ -107,6 +127,30 @@ export default function RequestDetails({
   const fieldsToRender = (
     request: Request
   ): { label: string; value: string | number }[] => [
+    {
+      label: t('request_source'),
+      value: toReadableLabel(request.requestSource)
+    },
+    {
+      label: t('pole_code'),
+      value: request.poleCode
+    },
+    {
+      label: t('fault_type'),
+      value: toReadableLabel(request.faultType)
+    },
+    {
+      label: t('safety_severity'),
+      value: toReadableLabel(request.safetySeverity)
+    },
+    {
+      label: t('scan_timestamp'),
+      value: getFormattedDate(request.scanTimestamp)
+    },
+    {
+      label: t('scan_coordinates'),
+      value: scanCoordinates
+    },
     {
       label: t('contact'),
       value: request.contact
@@ -316,6 +360,26 @@ export default function RequestDetails({
                         {request.requestPortal.title}
                       </Link>
                     }
+                  </Alert>
+                </Box>
+              )}
+              {request.requestSource === 'QR' && (
+                <Box
+                  sx={{
+                    mt: 1,
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Alert severity={'info'}>
+                    {`${t('request_source')}: ${toReadableLabel(
+                      request.requestSource
+                    )}${
+                      request.poleCode
+                        ? ` • ${t('pole_code')}: ${request.poleCode}`
+                        : ''
+                    }`}
                   </Alert>
                 </Box>
               )}

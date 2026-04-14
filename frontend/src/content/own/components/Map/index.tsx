@@ -14,7 +14,10 @@ interface Location {
   id: number;
   title: string;
   address: string;
+  subtitle?: string;
   coordinates: { lat: number; lng: number };
+  href?: string;
+  markerColor?: string;
 }
 interface MapProps {
   dimensions?: { width: number; height: number };
@@ -38,7 +41,7 @@ function LocalMap({ locations, select, onSelect, selected }) {
       locations.forEach((location) => bounds.extend(location.coordinates));
       mapRef.current.fitBounds(bounds);
     }
-  }, [mapRef]);
+  }, [locations]);
 
   const defaultCenter = { lat: 0, lng: 0 };
   return (
@@ -67,10 +70,21 @@ function LocalMap({ locations, select, onSelect, selected }) {
               position={location.coordinates}
               title={location.title}
               onClick={() => setSelectedLocation(location)}
-              icon={{
-                url: '/static/images/markers/red.png',
-                scaledSize: new window.google.maps.Size(25, 25)
-              }}
+              icon={
+                location.markerColor
+                  ? {
+                      path: window.google.maps.SymbolPath.CIRCLE,
+                      fillColor: location.markerColor,
+                      fillOpacity: 1,
+                      strokeColor: '#ffffff',
+                      strokeWeight: 2,
+                      scale: 9
+                    }
+                  : {
+                      url: '/static/images/markers/red.png',
+                      scaledSize: new window.google.maps.Size(25, 25)
+                    }
+              }
             />
           ))}
           {selectedLocation && (
@@ -82,10 +96,15 @@ function LocalMap({ locations, select, onSelect, selected }) {
                 <Link
                   variant="h6"
                   color="primary"
-                  href={`/app/locations/${selectedLocation.id}`}
+                  href={selectedLocation.href ?? `/app/locations/${selectedLocation.id}`}
                 >
                   {selectedLocation.title}
                 </Link>
+                {selectedLocation.subtitle && (
+                  <Typography variant="subtitle2">
+                    {selectedLocation.subtitle}
+                  </Typography>
+                )}
                 <Typography variant="subtitle1">
                   {selectedLocation.address}
                 </Typography>

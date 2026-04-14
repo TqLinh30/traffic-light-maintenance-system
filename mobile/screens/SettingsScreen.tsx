@@ -19,22 +19,75 @@ import { useContext, useEffect, useState } from 'react';
 import { RootStackScreenProps } from '../types';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
-import { showMessage } from 'react-native-flash-message';
+import { SheetManager } from 'react-native-actions-sheet';
 import { CustomSnackBarContext } from '../contexts/CustomSnackBarContext';
-import tr from '../i18n/translations/tr';
+import { getMobileLanguageOption, mobileLanguageOptions } from '../i18n/i18n';
+import { PermissionEntity } from '../models/role';
+import { getErrorMessage } from '../utils/api';
 
 export default function SettingsScreen({
-                                         navigation
-                                       }: RootStackScreenProps<'Settings'>) {
+  navigation
+}: RootStackScreenProps<'Settings'>) {
   const theme = useTheme();
-  const { user, switchAccount, logout } = useAuth();
+  const {
+    user,
+    switchAccount,
+    logout,
+    companySettings,
+    patchGeneralPreferences,
+    hasViewPermission
+  } = useAuth();
   const [switchingAccount, setSwitchingAccount] = useState<boolean>(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [versionPressCount, setVersionPressCount] = useState<number>(0);
   const [openLogout, setOpenLogout] = useState<boolean>(false);
   const [openDevInfo, setOpenDevInfo] = useState<boolean>(false);
   const { showSnackBar } = useContext(CustomSnackBarContext);
   const [devMode, setDevMode] = useState<boolean>(false);
+  const selectedLanguage = getMobileLanguageOption(
+    i18n.resolvedLanguage ||
+      i18n.language ||
+      companySettings?.generalPreferences?.language
+  );
+
+  const handleLanguagePress = () => {
+    SheetManager.show('basic-select-sheet', {
+      payload: {
+        title: t('language'),
+        items: mobileLanguageOptions.map((option) => ({
+          label: option.label,
+          value: option.code
+        })),
+        onSelect: async (item) => {
+          const selectedOption = mobileLanguageOptions.find(
+            (option) => option.code === item.value
+          );
+
+          if (!selectedOption) {
+            return;
+          }
+
+          await i18n.changeLanguage(selectedOption.code);
+
+          if (
+            !companySettings?.generalPreferences?.id ||
+            !hasViewPermission(PermissionEntity.SETTINGS)
+          ) {
+            return;
+          }
+
+          try {
+            await patchGeneralPreferences({
+              language: selectedOption.backendCode
+            });
+          } catch (error) {
+            showSnackBar(getErrorMessage(error, t('error')), 'error');
+          }
+        }
+      }
+    });
+  };
+
   useEffect(() => {
     if (versionPressCount > 2 && versionPressCount < 6) {
       showSnackBar(`Dev mode in ${6 - versionPressCount}`, 'info');
@@ -50,7 +103,7 @@ export default function SettingsScreen({
         <Dialog visible={openLogout} onDismiss={() => setOpenLogout(false)}>
           <Dialog.Title>{t('confirmation')}</Dialog.Title>
           <Dialog.Content>
-            <Text variant='bodyMedium'>{t('confirm_logout')}</Text>
+            <Text variant="bodyMedium">{t('confirm_logout')}</Text>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setOpenLogout(false)}>{t('cancel')}</Button>
@@ -66,8 +119,8 @@ export default function SettingsScreen({
         <Dialog visible={openDevInfo} onDismiss={() => setOpenDevInfo(false)}>
           <Dialog.Title>{t('Dev Info')}</Dialog.Title>
           <Dialog.Content>
-            <Text variant='titleMedium'>{t('Build ID')}</Text>
-            <Text variant='bodyMedium'>{Updates.updateId}</Text>
+            <Text variant="titleMedium">{t('Build ID')}</Text>
+            <Text variant="bodyMedium">{Updates.updateId}</Text>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setOpenDevInfo(false)}>{t('cancel')}</Button>
@@ -94,17 +147,27 @@ export default function SettingsScreen({
           description={t('update_profile')}
           onPress={() => navigation.navigate('UserProfile')}
         />
-        {user.parentSuperAccount && <List.Item
+        {user.parentSuperAccount && (
+          <List.Item
+            style={{ paddingHorizontal: 20 }}
+            left={(props) => <IconButton icon={'swap-horizontal'} />}
+            title={t('switch_to_super_user')}
+            right={(props) => switchingAccount && <ActivityIndicator />}
+            onPress={() => {
+              setSwitchingAccount(true);
+              switchAccount(user.parentSuperAccount.superUserId).finally(() =>
+                setSwitchingAccount(false)
+              );
+            }}
+          />
+        )}
+        <List.Item
           style={{ paddingHorizontal: 20 }}
-          left={(props) => <IconButton icon={'swap-horizontal'} />}
-          title={t('switch_to_super_user')}
-          right={(props) => switchingAccount && <ActivityIndicator />}
-          onPress={() => {
-            setSwitchingAccount(true);
-            switchAccount(user.parentSuperAccount.superUserId)
-              .finally(() => setSwitchingAccount(false));
-          }}
-        />}
+          left={(props) => <IconButton icon={'translate'} />}
+          title={t('language')}
+          description={selectedLanguage.label}
+          onPress={handleLanguagePress}
+        />
         <List.Item
           style={{ paddingHorizontal: 20 }}
           left={(props) => (
@@ -119,7 +182,7 @@ export default function SettingsScreen({
             if (devMode) {
               setOpenDevInfo(true);
             } else {
-              setVersionPressCount(state => state + 1);
+              setVersionPressCount((state) => state + 1);
             }
           }}
           style={{ paddingHorizontal: 20 }}

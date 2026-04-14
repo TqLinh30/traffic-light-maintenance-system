@@ -32,4 +32,34 @@ public interface PreventiveMaintenanceRepository extends JpaRepository<Preventiv
             "LEFT JOIN FETCH p.location LEFT JOIN FETCH p.asset " +
             "WHERE p.company.id = :companyId")
     List<PreventiveMaintenance> findByCompanyForExport(@Param("companyId") Long companyId);
+
+    @Query("SELECT DISTINCT p FROM PreventiveMaintenance p " +
+            "LEFT JOIN FETCH p.schedule " +
+            "LEFT JOIN FETCH p.location " +
+            "LEFT JOIN FETCH p.asset " +
+            "WHERE p.location.id = :locationId")
+    List<PreventiveMaintenance> findByLocationIdWithSchedule(@Param("locationId") Long locationId);
+
+    @Query("SELECT DISTINCT p FROM PreventiveMaintenance p " +
+            "LEFT JOIN FETCH p.schedule " +
+            "LEFT JOIN FETCH p.location " +
+            "LEFT JOIN FETCH p.asset " +
+            "WHERE p.asset.id = :assetId")
+    List<PreventiveMaintenance> findByAssetIdWithSchedule(@Param("assetId") Long assetId);
+
+    @Query("SELECT DISTINCT p FROM PreventiveMaintenance p " +
+            "LEFT JOIN FETCH p.schedule " +
+            "LEFT JOIN FETCH p.location " +
+            "LEFT JOIN FETCH p.asset " +
+            "WHERE p.location.id IN :locationIds")
+    List<PreventiveMaintenance> findByLocationIdsWithSchedule(@Param("locationIds") Collection<Long> locationIds);
+
+    @Query("SELECT DISTINCT p FROM PreventiveMaintenance p " +
+            "LEFT JOIN FETCH p.schedule " +
+            "LEFT JOIN FETCH p.location " +
+            "LEFT JOIN FETCH p.asset " +
+            "WHERE p.location.id IN :locationIds OR p.asset.id IN :assetIds")
+    List<PreventiveMaintenance> findByLocationIdsOrAssetIdsWithSchedule(
+            @Param("locationIds") Collection<Long> locationIds,
+            @Param("assetIds") Collection<Long> assetIds);
 }

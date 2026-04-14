@@ -4,6 +4,7 @@ import com.grash.dto.RequestPatchDTO;
 import com.grash.dto.RequestShowDTO;
 import com.grash.model.Request;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.Mappings;
 
@@ -14,5 +15,6 @@ public interface RequestMapper {
     @Mappings({})
     RequestPatchDTO toPatchDto(Request model);
 
+    @Mapping(source = "qrTag.id", target = "qrTagId")
     RequestShowDTO toShowDto(Request model);
 }

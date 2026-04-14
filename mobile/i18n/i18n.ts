@@ -16,8 +16,75 @@ import ruJSON from './translations/ru';
 import huJSON from './translations/hu';
 import nlJSON from './translations/nl';
 import zhCnJSON from './translations/zh_cn';
+import zhTwJSON from './translations/zh_tw';
+import viJSON from './translations/vi';
 import baJSON from './translations/ba';
-const resources = {
+
+export const mobileLanguageOptions = [
+  { code: 'de', backendCode: 'DE', label: 'Deutsch' },
+  { code: 'en', backendCode: 'EN', label: 'English' },
+  { code: 'es', backendCode: 'ES', label: 'Español' },
+  { code: 'fr', backendCode: 'FR', label: 'Français' },
+  { code: 'tr', backendCode: 'TR', label: 'Türkçe' },
+  { code: 'pl', backendCode: 'PL', label: 'Polski' },
+  { code: 'pt_br', backendCode: 'PT_BR', label: 'Português (Brasil)' },
+  { code: 'ar', backendCode: 'AR', label: 'العربية' },
+  { code: 'it', backendCode: 'IT', label: 'Italiano' },
+  { code: 'sv', backendCode: 'SV', label: 'Svenska' },
+  { code: 'ru', backendCode: 'RU', label: 'Русский' },
+  { code: 'hu', backendCode: 'HU', label: 'Magyar' },
+  { code: 'nl', backendCode: 'NL', label: 'Nederlands' },
+  { code: 'zh_cn', backendCode: 'ZH_CN', label: '简体中文' },
+  { code: 'zh_tw', backendCode: 'ZH_TW', label: '繁體中文' },
+  { code: 'vi', backendCode: 'VI', label: 'Tiếng Việt' },
+  { code: 'ba', backendCode: 'BA', label: 'Bosanski' }
+] as const;
+
+export type MobileLanguageCode = (typeof mobileLanguageOptions)[number]['code'];
+
+const fallbackLanguageCode: MobileLanguageCode = 'en';
+const fallbackLanguageOption =
+  mobileLanguageOptions.find(
+    (option) => option.code === fallbackLanguageCode
+  ) ?? mobileLanguageOptions[0];
+
+const normalizedLanguageCodeMap = mobileLanguageOptions.reduce<
+  Record<string, MobileLanguageCode>
+>((accumulator, option) => {
+  const normalizedCode = option.code.toLowerCase().replace(/-/g, '_');
+  const normalizedBackendCode = option.backendCode
+    .toLowerCase()
+    .replace(/-/g, '_');
+
+  accumulator[normalizedCode] = option.code;
+  accumulator[normalizedBackendCode] = option.code;
+
+  return accumulator;
+}, {});
+
+export const normalizeLanguageCode = (
+  language?: string | null
+): MobileLanguageCode => {
+  if (!language) {
+    return fallbackLanguageCode;
+  }
+
+  const normalizedLanguage = language.trim().toLowerCase().replace(/-/g, '_');
+
+  return normalizedLanguageCodeMap[normalizedLanguage] ?? fallbackLanguageCode;
+};
+
+export const getMobileLanguageOption = (language?: string | null) => {
+  const normalizedLanguageCode = normalizeLanguageCode(language);
+
+  return (
+    mobileLanguageOptions.find(
+      (option) => option.code === normalizedLanguageCode
+    ) ?? fallbackLanguageOption
+  );
+};
+
+const resources: Record<MobileLanguageCode, { translation: unknown }> = {
   de: { translation: deJSON },
   en: { translation: locale },
   es: { translation: esJSON },
@@ -32,7 +99,9 @@ const resources = {
   hu: { translation: huJSON },
   nl: { translation: nlJSON },
   zh_cn: { translation: zhCnJSON },
-  ba: { translation: baJSON },
+  zh_tw: { translation: zhTwJSON },
+  vi: { translation: viJSON },
+  ba: { translation: baJSON }
 };
 
 i18n
