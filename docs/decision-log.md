@@ -298,7 +298,7 @@
 - Decision:
   - use a dedicated Docker PostgreSQL instance exposed on local port `5433` for backend startup on this workstation because the host already runs a native PostgreSQL service on `5432`.
 - Status:
-  - accepted
+  - superseded
 - Rationale:
   - backend startup succeeded only after avoiding the host-level PostgreSQL port collision and pointing `DB_URL` to the dedicated project database.
 
@@ -399,3 +399,144 @@
 - Rationale:
   - `TrafficLightPoint.poleCode` is required, and deriving it from the existing location custom ID gives a stable default without needing a second sequence immediately.
   - the QR public code needs to be unique, versionable, and safe for future QR replacement, so the rule combines point identity, tag version, and a short random suffix.
+
+### D-047
+- Decision:
+  - keep mobile aligned with the point-centric location workflow by exposing `trafficLightEnabled` in the mobile location form and returning a backend-built public QR URL in `TrafficLightPointDetailDTO`.
+- Status:
+  - accepted
+- Rationale:
+  - the previous mobile location flow created plain Atlas locations and never sent the provisioning marker needed for `TrafficLightPoint + QrTag` creation.
+  - mobile also cannot reliably infer the correct public frontend base URL at runtime, so the backend detail DTO now provides the QR destination explicitly instead of forcing mobile to guess from API settings.
+
+### D-048
+- Decision:
+  - keep the existing web `Location` map picker surface, geocode the form `address` into picker coordinates automatically, and stabilize select-mode behavior with `panTo` rather than a fully controlled `center/zoom` map.
+- Status:
+  - accepted
+- Rationale:
+  - the current map picker was already wired into the `Location` form, so replacing it would be broader than necessary.
+  - the real gap was behavior, not presence: the picker used `defaultCenter/defaultZoom` semantics that felt reset-prone during form rerenders and had no address-to-map geocoding at all.
+  - the older `react-google-maps` wrapper in this repo is more stable when the select-mode map remains largely uncontrolled and only recenters through imperative `panTo` calls.
+
+### D-049
+- Decision:
+  - keep click-to-select coordinates immediate, but require an explicit `OK` action in the map popup before replacing the form `address` value with the reverse-geocoded place text.
+- Status:
+  - accepted
+- Rationale:
+  - users need to inspect the resolved place name and coordinates before overwriting the typed address, especially when clicking an approximate point on the map.
+  - this keeps the UX close to Google Maps while preserving the current form structure and minimizing change scope to the select-mode picker only.
+
+### D-050
+- Decision:
+  - add a dedicated search field inside the `Map Coordinates` form control and only trigger map recentering from that field when the user explicitly searches.
+- Status:
+  - accepted
+- Rationale:
+  - relying only on the main `address` input makes the map picker feel indirect and unclear during location creation.
+  - keeping a local search input inside the picker makes the map field self-contained while still preserving the outer `address` field as the confirmed canonical value.
+
+### D-051
+- Decision:
+  - default the select-mode map picker to Taiwan and bias geocoding searches toward Taiwan while still allowing reverse-geocoded click confirmation to fall back to coordinates when Google returns no formatted address.
+- Status:
+  - accepted
+- Rationale:
+  - this project is being tested primarily with Taiwanese traffic-light locations, so opening the picker over Taiwan reduces unnecessary navigation.
+  - Google reverse geocoding does not guarantee a named address for every arbitrary clicked point, so the picker should show the best available address but still remain usable when only coordinates are available.
+
+### D-052
+- Decision:
+  - explicit picker search will try Google geocoding first and then fall back to Places query resolution, while click-selected points will try reverse geocoding first and then fall back to nearby place lookup.
+- Status:
+  - accepted
+- Rationale:
+  - the user needs the picker to behave closer to Google Maps, where both search and point selection can surface human-readable place text.
+  - relying on only one Google service leaves too many cases where the UI falls straight back to coordinates, especially for arbitrary clicked points or environment-specific key restrictions.
+
+### D-053
+- Decision:
+  - intercept POI clicks in select-mode map picking, stop Google's default info card, and resolve those clicks through `PlacesService.getDetails(...)` so the app can show its own popup with the same `OK` address-confirmation action used elsewhere.
+- Status:
+  - accepted
+- Rationale:
+  - without intercepting `placeId`, named places open a Google-owned info card that the form cannot use to update `address`.
+  - POI clicks and arbitrary map clicks should converge on one predictable picker UX inside the app.
+
+### D-054
+- Decision:
+  - treat `placeId` fallback results as POI-only enrichment and route generic map-feature clicks back through coordinate-based reverse geocoding, with a preference for broader route or area results when Google's top reverse-geocode result is an over-specific nearby rooftop address.
+- Status:
+  - accepted
+- Rationale:
+  - user testing showed that road-feature clicks could still inherit the same nearest building address repeatedly, which is technically valid Google geocoding output but misleading for a picker UX.
+  - named POI clicks and arbitrary map clicks need different fallbacks: POIs should keep as much place context as the key can resolve, while arbitrary clicks should prefer the best location description for the clicked coordinates rather than a sticky nearest premise.
+
+### D-055
+- Decision:
+  - when a named POI click falls back from `PlacesService.getDetails(...)` to geocoder output, try a very local nearby-place lookup to recover the title before giving up and showing only address or coordinates.
+- Status:
+  - accepted
+- Rationale:
+  - current user testing still showed title loss on identified places, which means the address-only geocoder fallback is not sufficient for a usable picker UX.
+  - this keeps the fallback narrow: it only applies to the degraded POI path and only accepts nearby-place titles within a short distance threshold, so generic map clicks are not mislabeled as arbitrary POIs.
+
+### D-056
+- Decision:
+  - stop further app-side map-picker fallback changes until the Google Cloud project behind the current `GOOGLE_KEY` enables the APIs required by the existing picker flow.
+- Status:
+  - accepted
+- Rationale:
+  - direct REST checks with the current key returned `REQUEST_DENIED` for `Geocoding API` and legacy Places web-service probes.
+  - a separate headless Chromium probe on `http://127.0.0.1` using the same key reproduced `REQUEST_DENIED` from `google.maps.Geocoder().geocode(...)`, `PlacesService.nearbySearch(...)`, and `PlacesService.findPlaceFromQuery(...)` inside the actual Maps JavaScript environment.
+  - because the base Maps JavaScript script still loads successfully, the remaining bug is not that the map is missing; it is that the project configuration does not currently authorize the name and address resolution services the picker depends on.
+
+## 2026-04-19 - Local Backend Startup Recovery Decisions
+
+### D-057
+- Decision:
+  - prefer the native PostgreSQL 16 instance on `localhost:5432` for the current local demo path, with Docker PostgreSQL on `5433` kept only as a fallback when the host database is unavailable.
+- Status:
+  - accepted
+- Rationale:
+  - after reinstalling PostgreSQL locally and recreating `atlas` plus `rootUser`, the backend connects cleanly to `localhost:5432/atlas`.
+  - this now matches the user's current workstation setup more directly than the earlier temporary Docker-only workaround.
+
+### D-058
+- Decision:
+  - break the Spring startup bean cycle by replacing the traffic-light service-to-service callbacks with repository-level lookups inside `TrafficLightPointService` and `PreventiveMaintenanceMapper`.
+- Status:
+  - accepted
+- Rationale:
+  - Spring Boot 3.2 prohibits circular references by default, and local startup exposed a real cycle involving `WorkOrderService`, `LocationService`, `TrafficLightPointService`, `RequestService`, and PM mapping.
+  - keeping the fix at the repository and sequence-service level preserves existing request and work-order behavior without enabling `spring.main.allow-circular-references`.
+
+### D-059
+- Decision:
+  - document an explicit local `api` env baseline with non-empty demo values for required placeholders such as `MAIL_RECIPIENTS` and `KEYGEN_PRODUCT_TOKEN` even when notifications and licensing are effectively disabled for local demo runs.
+- Status:
+  - accepted
+- Rationale:
+  - `api/src/main/resources/application.yml` resolves several placeholders as required values during bean creation.
+  - local `spring-boot:run` does not automatically inherit root `.env` values, so blank or missing placeholders can block startup before the app reaches functional code paths.
+
+## 2026-04-19 - Web Map Picker Preview Lifecycle Decisions
+
+### D-060
+- Decision:
+  - decouple the select-mode map search effect from parent rerenders by using refs for the latest `onSelect` callback and selected coordinates, and only clear the place preview when a genuinely new search request is submitted.
+- Status:
+  - accepted
+- Rationale:
+  - after a successful search or POI click, `onSelect` updates the parent form, which re-renders and changes `selected` plus inline callback identities.
+  - the old search effect depended on those parent values and began by clearing `selectedPlacePreview`, so the popup could appear briefly and then disappear immediately even though the actual map selection was valid.
+
+### D-061
+- Decision:
+  - keep the web `Location` map picker fields directly under the `address` field instead of appending them near the end of the form.
+- Status:
+  - accepted
+- Rationale:
+  - once the map picker is behaviorally usable, the next most important UX improvement is making the address-to-map relationship visually obvious.
+  - moving only the field order in `Locations/index.tsx` is the smallest safe change because it preserves the existing shared form renderer and all current map-picker logic.

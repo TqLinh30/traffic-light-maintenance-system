@@ -34,6 +34,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -293,6 +294,7 @@ class TrafficLightPointServiceTest {
 
     @Test
     void getDetailsByLocationIdShouldReturnPointPmSummariesAndRecentWorkOrders() {
+        ReflectionTestUtils.setField(service, "frontendUrl", "http://localhost:3000");
         Company company = new Company();
         company.setId(5L);
 
@@ -350,6 +352,7 @@ class TrafficLightPointServiceTest {
 
         assertNotNull(dto.getPoint());
         assertEquals("QR-DETAIL-001", dto.getActiveQrPublicCode());
+        assertEquals("http://localhost:3000/traffic-light/QR-DETAIL-001", dto.getActiveQrPublicUrl());
         assertEquals(1, dto.getPreventiveMaintenances().size());
         assertEquals(600L, dto.getPreventiveMaintenances().get(0).getId());
         assertEquals(nextWorkOrderDate, dto.getPreventiveMaintenances().get(0).getNextWorkOrderDate());

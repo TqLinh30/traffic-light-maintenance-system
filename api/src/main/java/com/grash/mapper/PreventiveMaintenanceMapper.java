@@ -7,7 +7,7 @@ import com.grash.model.WorkOrder;
 import com.grash.model.enums.RecurrenceBasedOn;
 import com.grash.model.enums.RecurrenceType;
 import com.grash.model.enums.Status;
-import com.grash.service.WorkOrderService;
+import com.grash.repository.WorkOrderRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
@@ -34,7 +34,7 @@ public abstract class PreventiveMaintenanceMapper {
     private Scheduler scheduler;
 
     @Autowired
-    private WorkOrderService workOrderService;
+    private WorkOrderRepository workOrderRepository;
 
     public abstract PreventiveMaintenance updatePreventiveMaintenance(@MappingTarget PreventiveMaintenance entity,
                                                                       PreventiveMaintenancePatchDTO dto);
@@ -75,7 +75,8 @@ public abstract class PreventiveMaintenanceMapper {
                 log.error("Error getting next fire time for schedule " + schedule.getId(), e);
             }
         } else if (schedule.getRecurrenceBasedOn() == RecurrenceBasedOn.COMPLETED_DATE) {
-            Page<WorkOrder> workOrdersPage = workOrderService.findLastByPM(pm.getId(), 1);
+            Page<WorkOrder> workOrdersPage = workOrderRepository.findByParentPreventiveMaintenance_Id(pm.getId(),
+                    org.springframework.data.domain.PageRequest.of(0, 1));
 
             if (!workOrdersPage.hasContent()) {
                 nextWorkOrderDate = schedule.getStartsOn();

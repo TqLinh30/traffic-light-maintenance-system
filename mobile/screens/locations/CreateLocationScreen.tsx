@@ -14,7 +14,6 @@ import { addLocation, getLocationChildren } from '../../slices/location';
 import { getErrorMessage } from '../../utils/api';
 import { formatLocationValues, getLocationFields } from '../../utils/fields';
 
-
 export default function CreateLocationScreen({
   navigation,
   route
@@ -42,7 +41,7 @@ export default function CreateLocationScreen({
         validation={Yup.object().shape(shape)}
         navigation={navigation}
         submitText={t('create_location')}
-        values={{}}
+        values={{ trafficLightEnabled: false }}
         onChange={({ field, e }) => {}}
         onSubmit={async (values) => {
           let formattedValues = formatLocationValues(values);

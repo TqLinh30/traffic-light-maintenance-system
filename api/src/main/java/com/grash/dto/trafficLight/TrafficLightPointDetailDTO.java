@@ -12,6 +12,7 @@ import java.util.List;
 public class TrafficLightPointDetailDTO {
     private TrafficLightPointPublicDTO point;
     private String activeQrPublicCode;
+    private String activeQrPublicUrl;
     private List<TrafficLightPreventiveMaintenanceSummaryDTO> preventiveMaintenances = new ArrayList<>();
     private List<WorkOrderMiniDTO> recentWorkOrders = new ArrayList<>();
 }

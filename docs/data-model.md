@@ -310,12 +310,13 @@
 - Fields:
   - `point`
   - `activeQrPublicCode`
+  - `activeQrPublicUrl`
   - `preventiveMaintenances`
   - `recentWorkOrders`
 - Notes:
   - reuses `TrafficLightPointPublicDTO` as the point summary payload
   - remains a read-model only surface with no schema change
-  - the location drawer now uses `activeQrPublicCode` to render the printable internal QR view
+  - the web location drawer can derive the public route from the current web origin, while mobile now consumes `activeQrPublicUrl` directly so it can render a scannable QR target without guessing the frontend base URL
 
 ## Post-Phase Location Provisioning Notes
 
@@ -324,6 +325,7 @@
   - `LocationService` now auto-provisions a `TrafficLightPoint` if one does not yet exist
   - the default `poleCode` is generated from `Location.customId`
   - an active `QrTag` is created automatically if the point has no active tag
+  - mobile create and edit flows now expose the same `trafficLightEnabled` marker so provisioning behavior stays aligned across web and mobile
 
 ### Disable Behavior
 - If a location already has a `TrafficLightPoint`, attempts to turn `trafficLightEnabled` off through the update flow are ignored.

@@ -115,6 +115,37 @@
 - [x] Render the QR code in the existing traffic-light location detail panel
 - [x] Verify focused backend tests, backend compile, frontend lint, and frontend build
 
+## Post-Phase Mobile Traffic-Light Location Parity
+- [x] Inspect mobile location create, edit, and detail flows against the accepted point-centric traffic-light model
+- [x] Add `trafficLightEnabled` to the mobile location form model and create or edit screens
+- [x] Fetch traffic-light point detail from mobile location detail
+- [x] Expose a mobile QR section for traffic-light locations
+- [x] Add a backend-provided public QR URL to the traffic-light detail DTO so mobile can render a scannable QR target
+- [x] Verify focused backend tests, backend compile, and mobile typecheck impact
+
+## Post-Phase Web Location Map Picker Hardening
+- [x] Inspect the web `Location` add and edit form map-picker implementation
+- [x] Confirm why the picker resets after click and why address input never recenters the map
+- [x] Keep the existing `Location` map UI but make the picker state controlled during selection
+- [x] Geocode the `address` field into `coordinates` for the picker
+- [x] Add reverse-geocoded click confirmation with an explicit `OK` action before replacing the form `address`
+- [x] Add a direct search field inside `Map Coordinates`
+- [x] Default the select-mode map picker to Taiwan and bias explicit searches toward Taiwan
+- [x] Fix explicit search propagation through the shared `Map` wrapper and add Places-based fallbacks for search and click labeling
+- [x] Intercept POI clicks so named places use the app popup with `OK` instead of the default Google card
+- [x] Separate named-POI fallback from generic feature clicks and prefer broader reverse-geocode results over sticky nearest-rooftop addresses
+- [x] Enrich degraded POI fallback with a short-range nearby-place title lookup before dropping to address-only popup content
+- [x] Stabilize search-result and post-search POI popup lifecycle so parent rerenders do not immediately clear the map picker preview
+- [x] Move `Put location in map` and the map picker directly below the `address` field in the web `Location` form
+- [x] Verify frontend formatting, targeted lint, and frontend build
+
+## Post-Phase Local Backend Startup Recovery
+- [x] Inspect the local Spring Boot startup failures after switching back to a native PostgreSQL install
+- [x] Identify the required non-empty env placeholders needed for `.\mvnw.cmd spring-boot:run`
+- [x] Remove the traffic-light service and mapper bean cycle that blocked Spring context startup
+- [x] Verify backend compile after the cycle fix
+- [x] Verify local backend startup on `localhost:8080` with the current native PostgreSQL `atlas` database
+
 ## Snapshot
 - Completed:
   - Phases 0, 1, 2, 3, 4, 5, 6, and 7
@@ -125,9 +156,14 @@
 - In progress:
   - none
 - Pending:
+  - manual end-to-end local web demo validation with `frontend`, native PostgreSQL, and MinIO against the recovered backend startup path
   - manual web validation that a new traffic-light location auto-creates its `TrafficLightPoint` and QR code
   - manual web validation that toggling an existing non-traffic-light location on creates the point and QR code
   - manual web validation that the QR shown in location detail resolves to the public traffic-light route
+  - manual web validation that the location map picker supports internal search, recenters to Taiwan-biased results, keeps the clicked marker stable, and updates `address` only after the popup `OK` action
+  - Google Cloud project update for the current `GOOGLE_KEY` so `Geocoding API` and the required `Places` services stop returning `REQUEST_DENIED` in the web map picker
+  - mobile manual validation that a newly created traffic-light location now shows the QR section in location detail
+  - mobile manual validation that an older location created before the mobile fix can be edited to enable `trafficLightEnabled` and provision its QR
   - manual localization QA and terminology review
   - mobile device or simulator validation for the language picker flow
   - mobile physical-device validation for login, register, and `Custom Server` against the running local backend

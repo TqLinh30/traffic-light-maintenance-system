@@ -3,11 +3,11 @@ import { Divider, Text } from 'react-native-paper';
 import * as React from 'react';
 
 export default function BasicField({
-                                     label,
-                                     value
-                                   }: {
+  label,
+  value
+}: {
   label: string;
-  value: string | number;
+  value?: string | number | null;
 }) {
   if (value)
     return (
@@ -21,9 +21,7 @@ export default function BasicField({
           }}
         >
           <Text style={{ marginRight: 5 }}>{label}</Text>
-          <Text
-            style={{ fontWeight: 'bold', flexShrink: 1 }}>{value}</Text>
-
+          <Text style={{ fontWeight: 'bold', flexShrink: 1 }}>{value}</Text>
         </View>
         <Divider />
       </View>

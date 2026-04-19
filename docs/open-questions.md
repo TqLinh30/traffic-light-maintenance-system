@@ -75,6 +75,10 @@
 - Do we want a lightweight `hasTrafficLightPoint` signal on locations to avoid optional point-detail lookup misses?
 - What evidence threshold should trigger a real duplicate-request warning or suppression rule?
 - Do we want a native-speaker terminology review pass for the generated `vi` and completed `zh_tw` UI copy before production rollout?
+- Which Google Cloud APIs and key restrictions should be enabled for the web `Location` map picker:
+  - `Maps JavaScript API`
+  - `Geocoding API`
+  - the relevant `Places` API support used by the Maps JavaScript `places` library
 
 ## Resolved Post-Phase QR Provisioning
 - The project stays point-centric:

@@ -428,6 +428,11 @@ export const getLocationFields = (t): IField[] => {
       placeholder: 'Select customers'
     },
     {
+      name: 'trafficLightEnabled',
+      type: 'switch',
+      label: t('traffic_light_location')
+    },
+    {
       name: 'image',
       type: 'file',
       fileType: 'image',

@@ -482,6 +482,29 @@ function Locations() {
       placeholder: 'Casa, Maroc',
       required: true
     },
+    ...(apiKey
+      ? ([
+          {
+            name: 'mapSwitch',
+            type: 'checkbox',
+            label: t('put_location_in_map'),
+            relatedFields: [
+              { field: 'mapTitle', value: false, hide: true },
+              { field: 'coordinates', value: false, hide: true }
+            ]
+          },
+          {
+            name: 'mapTitle',
+            type: 'titleGroupField',
+            label: t('map_coordinates')
+          },
+          {
+            name: 'coordinates',
+            type: 'coordinates',
+            label: t('map_coordinates')
+          }
+        ] as IField[])
+      : []),
     {
       name: 'trafficLightEnabled',
       type: 'checkbox',
@@ -526,29 +549,6 @@ function Locations() {
       label: t('customers'),
       placeholder: 'Select customers'
     },
-    ...(apiKey
-      ? ([
-          {
-            name: 'mapSwitch',
-            type: 'checkbox',
-            label: t('put_location_in_map'),
-            relatedFields: [
-              { field: 'mapTitle', value: false, hide: true },
-              { field: 'coordinates', value: false, hide: true }
-            ]
-          },
-          {
-            name: 'mapTitle',
-            type: 'titleGroupField',
-            label: t('map_coordinates')
-          },
-          {
-            name: 'coordinates',
-            type: 'coordinates',
-            label: t('map_coordinates')
-          }
-        ] as IField[])
-      : []),
     {
       name: 'image',
       type: 'file',

@@ -3,8 +3,7 @@ import Location from '../../../models/location';
 import * as React from 'react';
 import { Image, ScrollView, StyleSheet } from 'react-native';
 import { View } from '../../../components/Themed';
-import { Divider, Text, useTheme } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { useTheme } from 'react-native-paper';
 import { UserMiniDTO } from '../../../models/user';
 import { Customer } from '../../../models/customer';
 import { Vendor } from '../../../models/vendor';
@@ -17,10 +16,10 @@ import {
 } from '../../../utils/urlPaths';
 import ListField from '../../../components/ListField';
 import BasicField from '../../../components/BasicField';
+import LocationTrafficLightPanel from './LocationTrafficLightPanel';
 
 export default function LocationDetails({ location }: { location: Location }) {
   const { t } = useTranslation();
-  const navigation = useNavigation();
   const theme = useTheme();
   const fieldsToRender: {
     label: string;
@@ -36,14 +35,9 @@ export default function LocationDetails({ location }: { location: Location }) {
       {location.image && (
         <Image style={{ height: 200 }} source={{ uri: location.image.url }} />
       )}
-      {fieldsToRender.map(
-        (field) =>
-          <BasicField
-            key={field.label}
-            label={field.label}
-            value={field.value}
-          />
-      )}
+      {fieldsToRender.map((field) => (
+        <BasicField key={field.label} label={field.label} value={field.value} />
+      ))}
       <ListField
         values={location?.workers}
         label={t('assigned_to')}
@@ -70,6 +64,7 @@ export default function LocationDetails({ location }: { location: Location }) {
         getHref={(team: Team) => getTeamUrl(team.id)}
         getValueLabel={(team: Team) => team.name}
       />
+      <LocationTrafficLightPanel location={location} />
     </ScrollView>
   );
 }

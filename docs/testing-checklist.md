@@ -290,6 +290,43 @@
 - The project backend was therefore started against a separate Docker PostgreSQL container published on `5433`.
 - `http://localhost:8080/swagger-ui/index.html` currently responds with `403`, but the Spring Boot process is fully started and serving requests.
 
+## Local Backend Startup Recovery Verification Performed
+- Backend compile:
+  - `.\mvnw.cmd -q -DskipTests compile`
+  - result: passed
+- Backend local startup recovery:
+  - launched `.\mvnw.cmd spring-boot:run` with native PostgreSQL on `localhost:5432/atlas`, the current MinIO settings, and explicit demo placeholder values including `MAIL_RECIPIENTS=devnull@example.com` and `KEYGEN_PRODUCT_TOKEN=local-dev-token`
+  - result: passed
+- Runtime confirmation:
+  - `api/backend-start-test.out.log` ends with `Started ApiApplication in 19.9 seconds`
+  - result: backend startup is currently healthy on `http://localhost:8080`
+
+## Local Backend Startup Recovery Notes
+- Root causes:
+  - local `spring-boot:run` failed early when required placeholders such as `ENABLE_EMAIL_NOTIFICATIONS`, `MAIL_RECIPIENTS`, and `KEYGEN_PRODUCT_TOKEN` were missing or blank in the shell session
+  - once placeholders were supplied, Spring still failed because `TrafficLightPointService` depended on `RequestService` and `WorkOrderService`, while the PM mapper also depended on `WorkOrderService`, creating a circular reference through `LocationService`
+- Fix:
+  - supplied a documented local env baseline for required placeholders during local startup
+  - moved QR request creation in `TrafficLightPointService` to direct repository persistence plus `CustomSequenceService`
+  - replaced `WorkOrderService` callbacks with direct `WorkOrderRepository` queries in both `TrafficLightPointService` and `PreventiveMaintenanceMapper`
+- Residual gap:
+  - this recovery pass verified backend startup and compile only; full manual browser validation of the web demo stack against the recovered backend is still pending
+
+## Local Frontend Runtime Recovery Verification Performed
+- Frontend runtime config inspection:
+  - confirmed `frontend/.env` and `frontend/.env.example` were both set to `API_URL=https://localhost:8080`
+  - result: matches the browser-side `ERR_SSL_PROTOCOL_ERROR` seen during local signup because the backend only serves plain HTTP on local port `8080`
+- Local frontend config recovery:
+  - updated `frontend/.env` and `frontend/.env.example` to `API_URL=http://localhost:8080`
+  - result: local frontend runtime config now matches the current backend protocol
+
+## Local Frontend Runtime Recovery Notes
+- Root cause:
+  - the frontend uses `runtime-env-cra` during `npm start`, so the local `.env` value is injected into browser runtime config as-is.
+  - with `API_URL=https://localhost:8080`, browser requests to `/auth/signup` failed before reaching the backend because the local Spring Boot server is not configured for TLS.
+- Follow-up:
+  - restart the frontend dev server after changing `frontend/.env` so `public/runtime-env.js` is regenerated with the corrected `http://` URL
+
 ## Mobile Dev-Client Runtime Verification Performed
 - Metro reachability on the workstation:
   - `Get-NetTCPConnection -LocalPort 8081 -State Listen`
@@ -437,3 +474,77 @@
   - exposed `activeQrPublicCode` in the existing traffic-light detail DTO and rendered the QR image plus copy/open/download/print actions in the location traffic-light panel
 - Residual gap:
   - manual browser validation is still needed for the actual create/edit location form and location drawer flow against a running backend with Liquibase applied
+
+## Mobile Traffic-Light Location Parity Verification Performed
+- Backend focused tests:
+  - `.\mvnw.cmd -q "-Dtest=TrafficLightPointServiceTest,LocationServiceTest" test`
+  - result: passed
+- Backend compile:
+  - `.\mvnw.cmd -q -DskipTests compile`
+  - result: passed
+- Mobile formatting:
+  - `npx prettier --write models/location.ts models/trafficLight.ts utils/fields.ts components/BasicField.tsx screens/locations/CreateLocationScreen.tsx screens/locations/EditLocationScreen.tsx screens/locations/details/LocationDetails.tsx screens/locations/details/LocationTrafficLightPanel.tsx i18n/translations/en.ts i18n/translations/vi.ts i18n/translations/zh_tw.ts`
+  - result: passed
+- Mobile typecheck:
+  - `npx tsc --noEmit`
+  - result: still fails only because of the pre-existing `expo-file-system` typing issue in `mobile/screens/workOrders/WODetailsScreen.tsx`
+
+## Mobile Traffic-Light Location Parity Notes
+- Root cause:
+  - mobile `CreateLocation` and `EditLocation` did not expose `trafficLightEnabled`, so locations created from mobile never triggered point and QR provisioning.
+  - mobile `LocationDetails` only rendered generic location metadata and never called `GET /traffic-light-points/location/{locationId}`, so even existing QR-enabled locations had no mobile QR surface.
+- Fix:
+  - added `trafficLightEnabled` to the mobile location model and form fields
+  - defaulted the create flow to `trafficLightEnabled: false` and bound the edit flow to the stored value
+  - added `LocationTrafficLightPanel` to mobile location detail, backed by `GET /traffic-light-points/location/{locationId}`
+  - extended `TrafficLightPointDetailDTO` with `activeQrPublicUrl` so mobile can render a scannable QR target without guessing the public web origin
+  - added `react-native-qrcode-svg` to render the QR directly on mobile
+- Residual gap:
+  - manual device validation is still needed for two cases:
+    - create a new mobile location with `Traffic light location` enabled and verify the QR section appears
+    - edit an older location that was created before this fix, enable `Traffic light location`, and verify the QR section appears after provisioning
+
+## Web Location Map Picker Verification Performed
+- Frontend formatting:
+  - `npx prettier --write src/content/own/components/Map/index.tsx src/content/own/components/form/SelectMapCoordinates.tsx src/content/own/components/form/index.tsx`
+  - result: passed
+- Frontend targeted lint:
+  - `npx eslint src/content/own/components/Map/index.tsx src/content/own/components/form/SelectMapCoordinates.tsx src/content/own/components/form/index.tsx src/content/own/Locations/index.tsx`
+  - result: passed
+- Frontend build:
+  - `npm run build`
+  - result: passed with the pre-existing `stylis-plugin-rtl` source-map warning and the existing `babel-preset-react-app` dependency warning
+- External Google API verification:
+  - direct HTTP probe with the current key against `https://maps.googleapis.com/maps/api/geocode/json?...`
+  - result: `REQUEST_DENIED` with an explicit message that `Geocoding API` is not activated on the current Google project
+  - direct HTTP probe with the current key against `https://maps.googleapis.com/maps/api/place/nearbysearch/json?...`
+  - result: `REQUEST_DENIED` with an explicit message that the legacy Places web-service API is not enabled for the current project
+- Browser-context Google API verification:
+  - launched headless Chromium on `http://127.0.0.1` with a minimal probe page using the exact `GOOGLE_KEY` from `frontend/.env`
+  - result: the Maps JavaScript base script loaded successfully, but `google.maps.Geocoder().geocode(...)`, `PlacesService.nearbySearch(...)`, and `PlacesService.findPlaceFromQuery(...)` all returned `REQUEST_DENIED`
+
+## Web Location Map Picker Notes
+- Root cause:
+  - the `Location` form already exposed a map picker once `GOOGLE_KEY` was configured, but the picker only mirrored `coordinates` and never geocoded the `address` field.
+  - the shared map component also relied on `defaultCenter/defaultZoom` semantics during select mode, so picking a point could feel like the map snapped back to its initial zoom or center when the form rerendered.
+- Fix:
+  - passed the current form `address` into `SelectMapCoordinates`
+  - kept the select-mode map on the stable shared component path and recenters it with `panTo` when the selected coordinates or geocoded address change
+  - added debounced address geocoding inside the map picker and pushed the resolved coordinates back into the form
+  - added reverse geocoding on click, a select-mode info popup, and an explicit `OK` button that writes the resolved place text back into the form `address`
+  - added a dedicated search box inside `Map Coordinates` so the user can search directly in the picker without relying only on the outer `address` input
+  - switched reverse geocoding to use a Google `LatLng` object for click-selected points to improve readable address resolution
+  - defaulted the select-mode picker to Taiwan and biased geocoding searches with `region: 'TW'`
+  - allowed repeated explicit searches of the same query by adding a request counter instead of treating identical text as a no-op
+  - fixed the shared `Map` wrapper so the explicit picker search trigger actually reaches the select-mode map component
+  - added a Places fallback for explicit search and a nearby-place fallback for click-selected coordinates when pure geocoding does not produce a readable address
+  - intercepted POI clicks with `placeId` and resolved them through `PlacesService.getDetails(...)` so named places now use the app's own popup plus `OK` flow instead of the Google-owned info card
+  - separated named-POI fallback from generic feature clicks so non-POI `placeId` features now fall back to coordinate-based reverse geocoding
+  - added a reverse-geocode heuristic that prefers broader route or area results when Google's top match is an over-specific nearby rooftop or interpolated address
+  - enriched degraded POI fallback with a short-range nearby-place lookup so named places can still keep a title when `getDetails(...)` is unavailable but nearby place metadata is still accessible
+  - moved select-mode search and popup updates onto refs for the latest callback and coordinates so a parent rerender after `onSelect` no longer clears the popup immediately
+  - reordered the web `Location` form fields so `Put location in map` and the `Map Coordinates` picker now sit immediately below `address`
+- Residual gap:
+  - manual browser validation is still needed with a real Google Maps key to confirm the geocoder returns the expected address for local traffic-light data in your target regions
+  - the Google Cloud project behind `GOOGLE_KEY` must have `Geocoding API` enabled for address lookup and reverse geocoding to work reliably; richer identified-place labels and search behavior additionally depend on `Places API`
+  - until those services stop returning `REQUEST_DENIED`, POI titles and search-driven recentering remain externally blocked regardless of additional frontend fallback logic

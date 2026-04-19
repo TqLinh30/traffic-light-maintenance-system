@@ -13,6 +13,7 @@ import com.grash.exception.CustomException;
 import com.grash.mapper.PreventiveMaintenanceMapper;
 import com.grash.mapper.WorkOrderMapper;
 import com.grash.model.Asset;
+import com.grash.model.Company;
 import com.grash.model.Location;
 import com.grash.model.PreventiveMaintenance;
 import com.grash.model.QrTag;
@@ -30,10 +31,12 @@ import com.grash.repository.RequestRepository;
 import com.grash.repository.TrafficLightPointRepository;
 import com.grash.repository.WorkOrderRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -51,13 +54,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TrafficLightPointService {
 
+    @Value("${frontend.url:}")
+    private String frontendUrl;
+
     private final TrafficLightPointRepository trafficLightPointRepository;
     private final QrTagRepository qrTagRepository;
     private final RequestRepository requestRepository;
     private final PreventiveMaintenanceRepository preventiveMaintenanceRepository;
     private final WorkOrderRepository workOrderRepository;
-    private final RequestService requestService;
-    private final WorkOrderService workOrderService;
+    private final EntityManager entityManager;
+    private final CustomSequenceService customSequenceService;
     private final PreventiveMaintenanceMapper preventiveMaintenanceMapper;
     private final WorkOrderMapper workOrderMapper;
 
@@ -128,6 +134,7 @@ public class TrafficLightPointService {
         TrafficLightPointDetailDTO dto = new TrafficLightPointDetailDTO();
         dto.setPoint(toPublicDto(point));
         dto.setActiveQrPublicCode(activeQrTag.getQrPublicCode());
+        dto.setActiveQrPublicUrl(buildPublicQrUrl(activeQrTag.getQrPublicCode()));
         dto.setPreventiveMaintenances(getRelatedPreventiveMaintenances(point).stream()
                 .map(this::toPreventiveMaintenanceSummaryDto)
                 .sorted(Comparator.comparing(TrafficLightPreventiveMaintenanceSummaryDTO::getNextWorkOrderDate,
@@ -140,6 +147,7 @@ public class TrafficLightPointService {
     public Request createRequestFromQr(String qrPublicCode, TrafficLightQrRequestCreateDTO dto) {
         QrTag qrTag = resolveActiveQrTag(qrPublicCode);
         TrafficLightPoint point = qrTag.getTrafficLightPoint();
+        Company company = point.getCompany();
 
         Request request = new Request();
         request.setTitle(dto.getTitle().trim());
@@ -156,8 +164,12 @@ public class TrafficLightPointService {
         request.setScanLongitude(dto.getScanLongitude());
         request.setSafetySeverity(dto.getSafetySeverity());
         request.setPriority(toPriority(dto.getSafetySeverity()));
+        request.setCompany(company);
+        request.setCustomId("R" + String.format("%06d", customSequenceService.getNextRequestSequence(company)));
 
-        return requestService.create(request, point.getCompany());
+        Request savedRequest = requestRepository.saveAndFlush(request);
+        entityManager.refresh(savedRequest);
+        return savedRequest;
     }
 
     @Transactional
@@ -330,6 +342,16 @@ public class TrafficLightPointService {
         return candidate;
     }
 
+    private String buildPublicQrUrl(String qrPublicCode) {
+        if (qrPublicCode == null || qrPublicCode.isBlank() || frontendUrl == null || frontendUrl.isBlank()) {
+            return null;
+        }
+        String normalizedFrontendUrl = frontendUrl.endsWith("/")
+                ? frontendUrl.substring(0, frontendUrl.length() - 1)
+                : frontendUrl;
+        return normalizedFrontendUrl + "/traffic-light/" + qrPublicCode;
+    }
+
     private List<WorkOrderMiniDTO> getActiveWorkOrders(TrafficLightPoint point) {
         return getRelatedWorkOrders(point).stream()
                 .filter(workOrder -> workOrder.getStatus() != Status.COMPLETE)
@@ -348,10 +370,10 @@ public class TrafficLightPointService {
 
     private List<WorkOrder> getRelatedWorkOrders(TrafficLightPoint point) {
         Map<Long, WorkOrder> workOrdersById = new LinkedHashMap<>();
-        workOrderService.findByLocation(point.getLocation().getId()).forEach(workOrder -> workOrdersById.put(
+        workOrderRepository.findByLocation_Id(point.getLocation().getId()).forEach(workOrder -> workOrdersById.put(
                 workOrder.getId(), workOrder));
         if (point.getMainAsset() != null) {
-            workOrderService.findByAsset(point.getMainAsset().getId()).forEach(workOrder -> workOrdersById.put(
+            workOrderRepository.findByAsset_Id(point.getMainAsset().getId()).forEach(workOrder -> workOrdersById.put(
                     workOrder.getId(), workOrder));
         }
         return new ArrayList<>(workOrdersById.values());

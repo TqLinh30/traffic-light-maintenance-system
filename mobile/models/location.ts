@@ -19,6 +19,7 @@ export default interface Location extends Audit {
   workers: UserMiniDTO[];
   teams: TeamMiniDTO[];
   customId: string;
+  trafficLightEnabled?: boolean;
 }
 export interface LocationMiniDTO {
   id: number;

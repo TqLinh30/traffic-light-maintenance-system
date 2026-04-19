@@ -224,8 +224,12 @@ export default (props: PropsType) => {
                   ) : field.type === 'coordinates' ? (
                     <SelectMapCoordinates
                       selected={formik.values[field.name]}
+                      address={formik.values.address}
                       onChange={(coordinates) => {
                         handleChange(formik, field.name, coordinates);
+                      }}
+                      onAddressConfirm={(address) => {
+                        handleChange(formik, 'address', address);
                       }}
                     />
                   ) : field.type === 'partQuantity' ? (

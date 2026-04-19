@@ -49,6 +49,7 @@ export default function EditLocationScreen({
         submitText={t('save')}
         values={{
           ...location,
+          trafficLightEnabled: location?.trafficLightEnabled ?? false,
           title: location?.name,
           workers: location?.workers.map((worker) => {
             return {
