@@ -5,13 +5,8 @@ import { SidebarContext } from 'src/contexts/SidebarContext';
 import {
   alpha,
   Box,
-  Button,
-  darken,
   Divider,
   Drawer,
-  lighten,
-  Link,
-  Stack,
   styled,
   Typography,
   useTheme
@@ -19,15 +14,13 @@ import {
 import SidebarMenu from './SidebarMenu';
 import SidebarFooter from './SidebarFooter';
 import Logo from 'src/components/LogoSign';
-import { isCloudVersion, isWhiteLabeled } from '../../../config';
-import useAuth from '../../../hooks/useAuth';
-import dayjs from 'dayjs';
+import { isWhiteLabeled } from '../../../config';
 
 const SidebarWrapper = styled(Box)(
   ({ theme }) => `
         width: ${theme.sidebar.width};
         min-width: ${theme.sidebar.width};
-        color: ${theme.colors.alpha.trueWhite[70]};
+        color: ${theme.sidebar.textColor};
         position: relative;
         z-index: 7;
         height: 100%;
@@ -51,12 +44,13 @@ function Sidebar() {
           position: 'fixed',
           left: 0,
           top: 0,
-          background:
-            theme.palette.mode === 'dark'
-              ? alpha(lighten(theme.header.background, 0.1), 0.5)
-              : darken(theme.colors.alpha.black[100], 0.5),
-          boxShadow:
-            theme.palette.mode === 'dark' ? theme.sidebar.boxShadow : 'none'
+          background: `linear-gradient(180deg, ${alpha(
+            theme.sidebar.background,
+            0.98
+          )} 0%, ${alpha(theme.sidebar.background, 0.94)} 100%)`,
+          backdropFilter: 'blur(20px)',
+          borderRight: `1px solid ${theme.sidebar.dividerBg}`,
+          boxShadow: theme.sidebar.boxShadow
         }}
       >
         <Scrollbar>
@@ -69,16 +63,25 @@ function Sidebar() {
               }}
             >
               <Box>
-                <Logo white />
+                <Logo />
                 {!isWhiteLabeled && (
                   <Typography
-                    style={{ cursor: 'pointer', color: 'white' }}
+                    sx={{
+                      cursor: 'pointer',
+                      mt: 1.5,
+                      display: 'block',
+                      textAlign: 'center',
+                      color: theme.sidebar.textColor,
+                      fontWeight: 600,
+                      letterSpacing: '0.01em',
+                      opacity: 0.9
+                    }}
                     fontSize={13}
                     onClick={() => {
                       window.open('https://www.intel-loop.com/', '_blank');
                     }}
                   >
-                    Powered by Intelloop
+                    Traffic Signal Care
                   </Typography>
                 )}
               </Box>
@@ -88,14 +91,14 @@ function Sidebar() {
             sx={{
               mt: theme.spacing(1),
               mx: theme.spacing(2),
-              background: theme.colors.alpha.trueWhite[10]
+              background: theme.sidebar.dividerBg
             }}
           />
           <SidebarMenu />
         </Scrollbar>
         <Divider
           sx={{
-            background: theme.colors.alpha.trueWhite[10]
+            background: theme.sidebar.dividerBg
           }}
         />
         <SidebarFooter />
@@ -112,10 +115,11 @@ function Sidebar() {
       >
         <SidebarWrapper
           sx={{
-            background:
-              theme.palette.mode === 'dark'
-                ? theme.colors.alpha.white[100]
-                : darken(theme.colors.alpha.black[100], 0.5)
+            background: `linear-gradient(180deg, ${alpha(
+              theme.sidebar.background,
+              0.99
+            )} 0%, ${alpha(theme.sidebar.background, 0.96)} 100%)`,
+            borderRight: `1px solid ${theme.sidebar.dividerBg}`
           }}
         >
           <Scrollbar>
@@ -128,10 +132,19 @@ function Sidebar() {
                 }}
               >
                 <Box>
-                  <Logo white />
+                  <Logo />
                   {!isWhiteLabeled && (
                     <Typography
-                      style={{ cursor: 'pointer', color: 'white' }}
+                      sx={{
+                        cursor: 'pointer',
+                        mt: 0.75,
+                        display: 'block',
+                        textAlign: 'center',
+                        color: theme.sidebar.textColor,
+                        fontWeight: 600,
+                        letterSpacing: '0.01em',
+                        opacity: 0.9
+                      }}
                       fontSize={13}
                       onClick={() => {
                         window.open('https://www.intel-loop.com/', '_blank');
@@ -147,7 +160,7 @@ function Sidebar() {
               sx={{
                 mt: theme.spacing(1),
                 mx: theme.spacing(2),
-                background: theme.colors.alpha.trueWhite[10]
+                background: theme.sidebar.dividerBg
               }}
             />
             <SidebarMenu />

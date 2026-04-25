@@ -146,6 +146,16 @@
 - [x] Verify backend compile after the cycle fix
 - [x] Verify local backend startup on `localhost:8080` with the current native PostgreSQL `atlas` database
 
+## Post-Phase SignalCare Branding Rollout
+- [x] Re-read project memory and inspect the current default branding surfaces across backend, web, home, and mobile
+- [x] Replace the default product name with `SignalCare` in the main user-facing metadata and copy
+- [x] Replace the default logo assets across `frontend`, `home`, backend email assets, and mobile app assets
+- [x] Replace the earlier generated `SignalCare` logo with the approved user-provided SVG source and regenerate branded assets from that vector
+- [x] Refresh the web sidebar from the old dark hardcoded styling to a light modern theme-driven palette
+- [x] Keep risky technical identifiers unchanged for now and document that decision
+- [x] Run targeted compile, build, lint, and config checks for the branding rollout and document any pre-existing blockers
+- [ ] Manually validate the updated branded entry points across web, home, and mobile after the targeted automated checks
+
 ## Snapshot
 - Completed:
   - Phases 0, 1, 2, 3, 4, 5, 6, and 7
@@ -153,9 +163,12 @@
   - post-phase mobile scan follow-up
   - post-phase mobile scan lifecycle follow-up
   - post-phase location traffic-light automation follow-up
+  - post-phase SignalCare branding rollout implementation
 - In progress:
   - none
 - Pending:
+  - manual QA that the default `SignalCare` name and refreshed SVG-derived logo render correctly on the main web, home, backend email, and mobile entry points
+  - manual QA that the refreshed web sidebar looks correct in desktop and mobile drawer layouts with the new light modern palette
   - manual end-to-end local web demo validation with `frontend`, native PostgreSQL, and MinIO against the recovered backend startup path
   - manual web validation that a new traffic-light location auto-creates its `TrafficLightPoint` and QR code
   - manual web validation that toggling an existing non-traffic-light location on creates the point and QR code

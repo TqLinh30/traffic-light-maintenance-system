@@ -36,9 +36,11 @@ const MenuWrapper = styled(Box)(
       text-transform: uppercase;
       font-weight: bold;
       font-size: ${theme.typography.pxToRem(12)};
-      color: ${theme.colors.alpha.trueWhite[50]};
+      color: ${theme.sidebar.menuItemHeadingColor};
       padding: ${theme.spacing(0, 2.5)};
       line-height: 1.4;
+      letter-spacing: 0.08em;
+      background: transparent;
     }
 `
 );
@@ -65,11 +67,19 @@ const SubMenuWrapper = styled(Box)(
     
         .MuiButton-root {
           display: flex;
-          color: ${theme.colors.alpha.trueWhite[70]};
+          color: ${theme.sidebar.menuItemColor};
           background-color: transparent;
           width: 100%;
           justify-content: flex-start;
           padding: ${theme.spacing(1.2, 3)};
+          border-radius: ${theme.general.borderRadius};
+          border: 1px solid transparent;
+          transition: ${theme.transitions.create([
+            'background-color',
+            'border-color',
+            'box-shadow',
+            'color'
+          ])};
 
           .MuiButton-startIcon,
           .MuiButton-endIcon {
@@ -82,13 +92,13 @@ const SubMenuWrapper = styled(Box)(
           }
 
           .MuiButton-startIcon {
-            color: ${theme.colors.alpha.trueWhite[30]};
+            color: ${theme.sidebar.menuItemIconColor};
             font-size: ${theme.typography.pxToRem(20)};
             margin-right: ${theme.spacing(1)};
           }
           
           .MuiButton-endIcon {
-            color: ${theme.colors.alpha.trueWhite[50]};
+            color: ${theme.sidebar.menuItemIconColor};
             margin-left: auto;
             opacity: .8;
             font-size: ${theme.typography.pxToRem(20)};
@@ -96,12 +106,17 @@ const SubMenuWrapper = styled(Box)(
 
           &.active,
           &:hover {
-            background-color: ${alpha(theme.colors.alpha.trueWhite[100], 0.06)};
-            color: ${theme.colors.alpha.trueWhite[100]};
+            background-color: ${theme.sidebar.menuItemBgActive};
+            border-color: ${alpha(theme.sidebar.menuItemColorActive, 0.12)};
+            color: ${theme.sidebar.menuItemColorActive};
+            box-shadow: 0 10px 30px ${alpha(
+              theme.colors.alpha.black[100],
+              0.05
+            )};
 
             .MuiButton-startIcon,
             .MuiButton-endIcon {
-              color: ${theme.colors.alpha.trueWhite[100]};
+              color: ${theme.sidebar.menuItemIconColorActive};
             }
           }
         }
@@ -134,7 +149,7 @@ const SubMenuWrapper = styled(Box)(
 
               &:before {
                 content: ' ';
-                background: ${theme.colors.alpha.trueWhite[100]};
+                background: ${theme.sidebar.menuItemColorActive};
                 opacity: 0;
                 transition: ${theme.transitions.create([
                   'transform',

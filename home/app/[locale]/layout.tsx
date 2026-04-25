@@ -29,8 +29,8 @@ export async function generateMetadata({ params }: { params: any }): Promise<Met
   return {
     metadataBase: new URL(baseUrl),
     title: {
-      default: "Atlas CMMS",
-      template: "%s | Atlas CMMS",
+      default: "SignalCare",
+      template: "%s | SignalCare",
     },
     icons: {
       icon: [

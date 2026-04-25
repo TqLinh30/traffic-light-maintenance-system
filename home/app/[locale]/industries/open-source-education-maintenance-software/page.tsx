@@ -60,9 +60,9 @@ const educationData: IndustryLayoutProps = {
 
   faqs: [
     {
-      question: "How does Atlas CMMS handle limited school budgets?",
+      question: "How does SignalCare handle limited school budgets?",
       answer:
-        "Unlike proprietary software, Atlas CMMS is open-source. You save on recurring per-user seats, allowing you to reallocate those funds toward actual facility repairs and school supplies.",
+        "Unlike proprietary software, SignalCare is open-source. You save on recurring per-user seats, allowing you to reallocate those funds toward actual facility repairs and school supplies.",
     },
     {
       question: "Can we manage multiple school sites in one instance?",
@@ -72,7 +72,7 @@ const educationData: IndustryLayoutProps = {
     {
       question: "Is student data protected?",
       answer:
-        "Absolutely. By self-hosting Atlas CMMS, you have 100% ownership of your data. There is no third-party access to your facility records or staff lists.",
+        "Absolutely. By self-hosting SignalCare, you have 100% ownership of your data. There is no third-party access to your facility records or staff lists.",
     },
   ],
 

@@ -1,7 +1,8 @@
 # Project Overview
 
 ## Project
-- Traffic light maintenance management customization on top of the existing Atlas CMMS codebase.
+- `SignalCare` is the active product brand for this traffic-light maintenance management system.
+- The implementation still builds on top of the existing Atlas CMMS codebase and module structure.
 
 ## Business Goal
 - Manage one real traffic light pole or point as one operational point.
@@ -14,6 +15,15 @@
 - Backend: Spring Boot 3.2 / Java 17 in `api/`
 - Web frontend: React 17 / MUI in `frontend/`
 - Mobile app: Expo React Native in `mobile/`
+- Marketing or public site: Next.js in `home/`
+
+## Brand Status
+- Default user-facing product name:
+  - `SignalCare`
+- Default approved logo:
+  - generated traffic-light maintenance mark with traffic-signal, maintenance, and map-location cues
+- Current technical exception:
+  - package identifiers, deep-link schemes, store links, and upstream `atlas-cmms.com` domains remain unchanged until an explicit migration target is provided
 
 ## What Already Exists
 - Core CMMS entities already present:

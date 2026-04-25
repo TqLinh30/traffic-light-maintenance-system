@@ -586,7 +586,7 @@ function BottomTabNavigator({ navigation }: RootTabScreenProps<'Home'>) {
                   fontWeight: 'bold'
                 }}
               >
-                Atlas
+                SignalCare
               </Text>
             ),
             title: t('home'),

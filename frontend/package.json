@@ -1,7 +1,7 @@
 {
   "name": "grash",
   "version": "0.1.0",
-  "title": "Atlas CMMS",
+  "title": "SignalCare",
   "description": "Free Open Source CMMS.",
   "private": true,
   "dependencies": {

@@ -36,8 +36,8 @@ public class BrandingService {
 
     public BrandConfig getBrandConfig() {
         BrandConfig defaultConfig = BrandConfig.builder()
-                .name("Atlas CMMS")
-                .shortName("Atlas")
+                .name("SignalCare")
+                .shortName("SignalCare")
                 .website("https://www.atlas-cmms.com")
                 .mail("contact@atlas-cmms.com")
                 .phone("+212 6 30 69 00 50")

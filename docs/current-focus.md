@@ -1,7 +1,9 @@
 # Current Focus
 
-- Current task: align the web `Location` form layout so the `Put location in map` control and the map picker appear immediately under the `address` field.
-- Why: the map picker behavior is now much closer to the intended UX, and the next user-facing friction is simply field order in the form.
+- Current task: manually QA the refreshed `SignalCare` branding surfaces, including the new light modern web sidebar styling and the SVG-derived logo assets.
+- Why: the repo now uses the supplied vector logo as the canonical brand mark across web, home, backend, and mobile assets, and the default web sidebar has been restyled away from its old dark hardcoded colors to a brighter theme-driven palette.
 - Next:
-  - manually validate that `address -> Put location in map -> map` now renders in that order for both add and edit location modals
-  - continue the remaining local web QR and location validations once the location form layout is confirmed
+  - manually QA the main branded entry points and confirm the SVG-derived logo looks correct on both light and dark surfaces, plus app icon, splash, and favicon sizes
+  - manually QA the web sidebar on desktop and mobile drawer states, especially menu hover, active rows, footer actions, and logo legibility on the lighter background
+  - collect explicit replacement targets if we want to migrate remaining upstream `atlas-cmms.com`, store-link, or package-identifier references in a later pass
+  - continue the pending local web QR, location, and map validation checklist once the branding QA is complete

@@ -60,19 +60,19 @@ const energyUtilitiesData: IndustryLayoutProps = {
   ],
   faqs: [
     {
-      question: "Is Atlas CMMS suitable for energy and utility infrastructure?",
+      question: "Is SignalCare suitable for energy and utility infrastructure?",
       answer:
-        "Yes. Atlas CMMS supports complex asset hierarchies, preventive maintenance, inspections, and multi-site operations required in energy and utility environments.",
+        "Yes. SignalCare supports complex asset hierarchies, preventive maintenance, inspections, and multi-site operations required in energy and utility environments.",
     },
     {
-      question: "Can Atlas CMMS handle compliance and safety inspections?",
+      question: "Can SignalCare handle compliance and safety inspections?",
       answer:
         "Absolutely. You can schedule recurring inspections, track maintenance history, and document interventions to support regulatory compliance and audits.",
     },
     {
-      question: "Does Atlas CMMS support on-premise deployment for secure environments?",
+      question: "Does SignalCare support on-premise deployment for secure environments?",
       answer:
-        "Yes. Atlas CMMS is open source and fully self-hostable using Docker, making it suitable for secure or isolated infrastructure networks.",
+        "Yes. SignalCare is open source and fully self-hostable using Docker, making it suitable for secure or isolated infrastructure networks.",
     },
   ],
 

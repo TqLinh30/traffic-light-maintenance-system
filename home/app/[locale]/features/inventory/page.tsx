@@ -65,14 +65,14 @@ const sparePartsData: IndustryLayoutProps = {
         "Spare parts inventory management software helps organizations track stock levels, automate reordering, connect parts to maintenance activities, and ensure critical components are always available when needed.",
     },
     {
-      question: "Can Atlas CMMS prevent stock shortages?",
+      question: "Can SignalCare prevent stock shortages?",
       answer:
-        "Yes. Atlas CMMS monitors inventory in real time, sends low-stock alerts, and supports automated purchasing workflows to keep essential parts available.",
+        "Yes. SignalCare monitors inventory in real time, sends low-stock alerts, and supports automated purchasing workflows to keep essential parts available.",
     },
     {
-      question: "Is Atlas CMMS suitable for multi-site inventory management?",
+      question: "Is SignalCare suitable for multi-site inventory management?",
       answer:
-        "Absolutely. Atlas CMMS supports multiple locations, centralized reporting, and full visibility across distributed facilities in a self-hosted open-source environment.",
+        "Absolutely. SignalCare supports multiple locations, centralized reporting, and full visibility across distributed facilities in a self-hosted open-source environment.",
     },
   ],
   relatedContent: [],

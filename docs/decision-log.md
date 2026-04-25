@@ -540,3 +540,41 @@
 - Rationale:
   - once the map picker is behaviorally usable, the next most important UX improvement is making the address-to-map relationship visually obvious.
   - moving only the field order in `Locations/index.tsx` is the smallest safe change because it preserves the existing shared form renderer and all current map-picker logic.
+
+## 2026-04-25 - SignalCare Branding Decisions
+
+### D-062
+- Decision:
+  - adopt `SignalCare` as the default product name and use the approved generated traffic-light logo across the repo's default branding surfaces.
+- Status:
+  - accepted
+- Rationale:
+  - the project now has a confirmed product identity aligned with the traffic-light maintenance use case, and the default repo branding should match that identity across web, home, backend, and mobile.
+  - this change is additive to the existing domain model and does not require re-architecting any traffic-light workflows.
+
+### D-063
+- Decision:
+  - keep technical identifiers such as bundle IDs, package IDs, deep-link schemes, store links, and upstream `atlas-cmms.com` domains unchanged until explicit migration targets are provided.
+- Status:
+  - accepted
+- Rationale:
+  - changing those identifiers would have non-obvious consequences for mobile builds, existing links, app-store continuity, and deployment configuration.
+  - the current user request is fully supported by a default brand-surface rollout without forcing a risky identifier migration in the same pass.
+
+### D-064
+- Decision:
+  - replace the earlier generated `SignalCare` logo source with the user-provided SVG at `C:/Users/tqlin/Downloads/codex/image/SVG/Asset 1.svg` and regenerate the repo's default branded assets from that vector source.
+- Status:
+  - accepted
+- Rationale:
+  - the user explicitly approved this SVG as the project logo and asked to switch the project to it.
+  - using the supplied vector source produces cleaner web, favicon, splash, and mobile exports than continuing to carry the previous raster-generated logo set.
+
+### D-065
+- Decision:
+  - restyle the web `ExtendedSidebarLayout` sidebar to use the existing `theme.sidebar.*` palette for a light modern appearance instead of the old dark hardcoded background and white-only menu styling.
+- Status:
+  - accepted
+- Rationale:
+  - the previous sidebar ignored the lighter sidebar palette already defined in the theme schemes and forced a dark translucent background with white text, which no longer matched the refreshed `SignalCare` branding direction.
+  - reusing `theme.sidebar.*` is the smallest safe path because it keeps the color system centralized and updates desktop sidebar, mobile drawer, menu states, and footer actions together.

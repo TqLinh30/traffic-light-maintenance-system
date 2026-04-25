@@ -6,7 +6,7 @@ const googleServicesJson = process.env.GOOGLE_SERVICES_JSON;
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Atlas CMMS',
+  name: 'SignalCare',
   slug: 'atlas-cmms',
   version: '1.0.38',
   orientation: 'portrait',
@@ -65,7 +65,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-camera',
       {
-        cameraPermission: 'Allow Atlas to access camera.'
+        cameraPermission: 'Allow SignalCare to access camera.'
       }
     ],
     [

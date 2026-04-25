@@ -5,6 +5,67 @@
 - No application behavior changed
 - No backend or frontend automated tests run in this phase
 
+## 2026-04-25 - SignalCare Branding Verification
+- Backend compile:
+  - `.\mvnw.cmd -q -DskipTests compile`
+  - result: passed
+- Frontend targeted lint:
+  - `npx eslint src/hooks/useBrand.ts src/content/pages/Auth/Register/Cover/index.tsx "src/i18n/translations/*.ts"`
+  - result: passed
+- Frontend build:
+  - `npm run build`
+  - result: passed with the same pre-existing `stylis-plugin-rtl` source-map warning and `babel-preset-react-app` dependency warning already seen in earlier passes
+- Mobile Expo config sanity:
+  - `npx expo config --type public`
+  - result: passed and confirmed the default display name is now `SignalCare`
+- Mobile TypeScript check:
+  - `npx tsc --noEmit`
+  - result: failed because of pre-existing `expo-file-system` type errors in `mobile/screens/workOrders/WODetailsScreen.tsx`
+- Home build attempt:
+  - `npm run build`
+  - result: blocked because `next` is not installed in the current local `home` environment
+- Home dependency recovery attempt:
+  - `npm ci`
+  - result: failed because `home/package-lock.json` is already out of sync with `home/package.json`, so the build blocker is pre-existing environment or dependency drift rather than a branding regression
+
+## 2026-04-25 - SignalCare SVG Logo Refresh Verification
+- Approved source asset:
+  - `C:/Users/tqlin/Downloads/codex/image/SVG/Asset 1.svg`
+  - result: rendered successfully as the new canonical project logo source and copied into `logo/signalcare-logo.svg`
+- Visual spot checks:
+  - viewed `frontend/public/static/images/logo/logo.png`, `frontend/public/static/images/logo/logo-white.png`, `mobile/assets/images/icon.png`, `mobile/assets/images/adaptive-icon.png`, `mobile/assets/images/splash.png`, and `mobile/android/app/src/main/res/drawable-xxhdpi/notification_icon.png`
+  - result: passed
+- Asset dimension sanity:
+  - confirmed expected sizes for the refreshed PNG surfaces, including `1254x1254` web logos, `1024x1024` backend and mobile icons, `512x512` mobile favicon, `651x651` mobile notification asset, and `1600x1600` splash assets
+  - result: passed
+- Android native asset sanity:
+  - confirmed regenerated `notification_icon.png`, `splashscreen_logo.png`, `ic_launcher.webp`, and `ic_launcher_foreground.webp` dimensions across density buckets, including `mipmap-xxxhdpi/ic_launcher_foreground.webp=432x432`
+  - result: passed
+- Mobile Expo config sanity:
+  - `npx expo config --type public`
+  - result: passed and still resolves the refreshed `icon`, `notification`, `splash`, and `adaptiveIcon` assets with default app name `SignalCare`
+- Notes:
+  - this refresh changed assets only; no application logic was modified in this pass
+  - the previously documented `frontend` full-lint, `mobile` typecheck, and `home` build blockers remain pre-existing and unchanged by the SVG asset refresh
+
+## 2026-04-25 - Web Sidebar Light Palette Verification
+- Frontend formatting:
+  - `npx prettier --write src/layouts/ExtendedSidebarLayout/Sidebar/index.tsx src/layouts/ExtendedSidebarLayout/Sidebar/SidebarMenu/index.tsx src/layouts/ExtendedSidebarLayout/Sidebar/SidebarFooter/index.tsx`
+  - result: passed
+- Frontend targeted lint:
+  - `npx eslint src/layouts/ExtendedSidebarLayout/Sidebar/index.tsx src/layouts/ExtendedSidebarLayout/Sidebar/SidebarMenu/index.tsx src/layouts/ExtendedSidebarLayout/Sidebar/SidebarFooter/index.tsx`
+  - result: passed
+- Frontend build:
+  - `npm run build`
+  - result: passed with the same pre-existing `stylis-plugin-rtl` source-map warning and `babel-preset-react-app` dependency warning already seen in earlier frontend builds
+- Scope verified:
+  - desktop sidebar container now uses `theme.sidebar.background`, `theme.sidebar.dividerBg`, and `theme.sidebar.boxShadow`
+  - sidebar menu headings, item text, icons, hover state, and active state now use `theme.sidebar.*` palette values instead of hardcoded white-on-dark styling
+  - mobile drawer sidebar now uses the non-white logo variant on the new light background
+  - sidebar footer action buttons now match the light menu palette and hover behavior
+- Residual gap:
+  - manual browser QA is still needed to judge the exact visual feel of the light modern palette on real data, especially the brand text, drawer presentation, and active-row emphasis
+
 ## Phase 1
 - Architecture and data-model alignment only
 - No application behavior changed

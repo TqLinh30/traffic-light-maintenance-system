@@ -91,24 +91,24 @@ const ownMenuItems: MenuItems[] = [
               }
             ]
           },
-          {
-            name: 'assets',
-            icon: Inventory2TwoToneIcon,
-            items: [
-              {
-                name: 'reliability_dashboard',
-                link: '/app/analytics/assets/reliability'
-              },
-              {
-                name: 'total_maintenance_cost',
-                link: '/app/analytics/assets/cost'
-              }
-              // {
-              //   name: 'useful_life',
-              //   link: '/app/analytics/assets/useful-life'
-              // }
-            ]
-          },
+          // {
+          //   name: 'assets',
+          //   icon: Inventory2TwoToneIcon,
+          //   items: [
+          //     {
+          //       name: 'reliability_dashboard',
+          //       link: '/app/analytics/assets/reliability'
+          //     },
+          //     {
+          //       name: 'total_maintenance_cost',
+          //       link: '/app/analytics/assets/cost'
+          //     }
+          //     // {
+          //     //   name: 'useful_life',
+          //     //   link: '/app/analytics/assets/useful-life'
+          //     // }
+          //   ]
+          // },
           {
             name: 'parts',
             icon: HandymanTwoToneIcon,
@@ -138,12 +138,12 @@ const ownMenuItems: MenuItems[] = [
         permission: PermissionEntity.REQUESTS,
         uiConfigKey: 'requests'
       },
-      {
-        name: 'assets',
-        link: '/app/assets',
-        icon: Inventory2TwoToneIcon,
-        permission: PermissionEntity.ASSETS
-      },
+      // {
+      //   name: 'assets',
+      //   link: '/app/assets',
+      //   icon: Inventory2TwoToneIcon,
+      //   permission: PermissionEntity.ASSETS
+      // },
       {
         name: 'locations',
         link: '/app/locations',
@@ -198,23 +198,23 @@ const ownMenuItems: MenuItems[] = [
           }
         ]
       },
-      {
-        name: 'vendors_customers',
-        link: '/app/vendors-customers/vendors',
-        icon: GroupsTwoTone,
-        permission: PermissionEntity.VENDORS_AND_CUSTOMERS,
-        uiConfigKey: 'vendorsAndCustomers',
-        items: [
-          {
-            name: 'vendors',
-            link: '/app/vendors-customers/vendors'
-          },
-          {
-            name: 'customers',
-            link: '/app/vendors-customers/customers'
-          }
-        ]
-      },
+      // {
+      //   name: 'vendors_customers',
+      //   link: '/app/vendors-customers/vendors',
+      //   icon: GroupsTwoTone,
+      //   permission: PermissionEntity.VENDORS_AND_CUSTOMERS,
+      //   uiConfigKey: 'vendorsAndCustomers',
+      //   items: [
+      //     {
+      //       name: 'vendors',
+      //       link: '/app/vendors-customers/vendors'
+      //     },
+      //     {
+      //       name: 'customers',
+      //       link: '/app/vendors-customers/customers'
+      //     }
+      //   ]
+      // },
       {
         name: 'categories',
         link: '/app/categories',

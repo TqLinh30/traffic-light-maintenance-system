@@ -14,8 +14,8 @@ const locale = {
   COMPLETE: 'Završeno',
   'home.built': 'Napravljeno da olakša upravljanje održavanjem',
   home_description:
-    "Kada su bijele table i ljepljive bilješke haos, a potreban vam je CMMS softver koji je dovoljno jednostavan da ga vaš tim zaista koristi - isprobajte Atlas",
-  try_grash: 'Isprobajte Atlas',
+    "Kada su bijele table i ljepljive bilješke haos, a potreban vam je CMMS softver koji je dovoljno jednostavan da ga vaš tim zaista koristi - isprobajte SignalCare",
+  try_grash: 'Isprobajte SignalCare',
   login: 'Prijava',
   start_trial: 'Započnite besplatni probni period',
   'home.what': 'Šta',
@@ -24,7 +24,7 @@ const locale = {
     'Izgradite efikasne, pouzdane tokove posla koji vam daju kontrolu nad održavanjem. Generišite, dodijelite i pratite radne naloge. Kontrolišite inventar. I dobijte pouzdane automatske izvještaje koji poboljšavaju vidljivost i stvaraju odgovornost.',
   key_features: 'Ključne karakteristike',
   key_features_description:
-    'Neke od karakteristika koje čine Atlas jednim od najboljih dostupnih CMMS-a danas',
+    'Neke od karakteristika koje čine SignalCare jednim od najboljih dostupnih CMMS-a danas',
   contribute: 'Doprinesite',
   work_orders: 'Radni nalozi',
   request_system: 'Sistem zahtjeva za rad',
@@ -80,7 +80,7 @@ const locale = {
   'eam.descriptions.0':
     'Frustrirani ste pokušavajući organizovati haotičan nered opreme u kompaniji, pitajući se da li je oprema pravilno održavana, ne znajući koliko košta njeno održavanje i sve druge glavobolje koje dolaze sa upravljanjem imovinom?',
   'eam.descriptions.1':
-    'Atlas CMMS modul za upravljanje imovinom može se koristiti za bilo koji broj od 10 do 1.000.000 sredstava, omogućavajući vam da pratite tačno ono što želite, na način na koji želite, u jednostavnoj i pretraživoj strukturi stabla.',
+    'SignalCare modul za upravljanje imovinom može se koristiti za bilo koji broj od 10 do 1.000.000 sredstava, omogućavajući vam da pratite tačno ono što želite, na način na koji želite, u jednostavnoj i pretraživoj strukturi stabla.',
   'eam.checks.0':
     'Znajte zdravlje svoje imovine u svakom trenutku i koliko vas košta',
   'eam.checks.1': 'Pregledajte kompletne i detaljne dnevnike održavanja.',
@@ -94,7 +94,7 @@ const locale = {
   'pm.descriptions.0':
     'Prestanite gubiti dragocjene sate na ručnu distribuciju kontrolnih lista za PM i praćenje tima kako biste bili sigurni da je posao obavljen.',
   'pm.descriptions.1':
-    'Atlas vam omogućava da lako automatizujete planiranje PM-a tako da se pravi posao automatski isporučuje u pravo vrijeme pravom tehničaru za pravo sredstvo.',
+    'SignalCare vam omogućava da lako automatizujete planiranje PM-a tako da se pravi posao automatski isporučuje u pravo vrijeme pravom tehničaru za pravo sredstvo.',
   'pm.checks.0':
     'Automatizujte planiranje PM-a na dnevnom, sedmičnom, mjesečnom, godišnjem nivou, ili na osnovu događaja ili očitanja brojila.',
   'pm.checks.1':
@@ -145,7 +145,7 @@ const locale = {
   'home.smarter': 'Pametniji',
   'home.work': 'Rad',
   'home.smarter_description':
-    'Atlas čini rad nevjerovatno lakim za tehničare dajući im pristup alatima i podacima koji su im potrebni — sve na dlanu.',
+    'SignalCare čini rad nevjerovatno lakim za tehničare dajući im pristup alatima i podacima koji su im potrebni — sve na dlanu.',
   leading_maintenance:
     'Predvodnik ka boljoj budućnosti za održavanje i pouzdanost',
   //register
@@ -1060,7 +1060,7 @@ const locale = {
   your_payment_secure: 'Vaši podaci o plaćanju su šifrovani i sigurni.',
   plan: 'Paket',
   current_plan: 'Trenutni paket',
-  number_users_who_will_use_grash: 'Broj korisnika koji će koristiti Atlas',
+  number_users_who_will_use_grash: 'Broj korisnika koji će koristiti SignalCare',
   admin_role: 'Admin',
   technical_role: 'Tehnički',
   limited_technical_role: 'Ograničeni tehnički',
@@ -1221,7 +1221,7 @@ const locale = {
   and_optional: 'I (opciono)',
   then: 'Tada',
   workflow_description:
-    'Kreirajte prilagođene tokove posla jednostavno kao Ako, I, Tada. Uštedite vrijeme i automatski dodijelite radne naloge kako biste prilagodili Atlas načinu na koji vaš tim radi.\nSvi paketi mogu kreirati do 1 prilagođeni tok posla. Da biste dodali više, nadogradite na naš Business paket',
+    'Kreirajte prilagođene tokove posla jednostavno kao Ako, I, Tada. Uštedite vrijeme i automatski dodijelite radne naloge kako biste prilagodili SignalCare načinu na koji vaš tim radi.\nSvi paketi mogu kreirati do 1 prilagođeni tok posla. Da biste dodali više, nadogradite na naš Business paket',
   CREATE_PURCHASE_ORDER: 'Kreiraj narudžbenicu',
   PART_IS: 'Dio je',
   QUANTITY_INFERIOR: 'Količina je manja od',
@@ -1284,7 +1284,7 @@ const locale = {
   upgrade: 'Nadogradi',
   downgrade: 'Unazadi',
   upgrade_description:
-    'Upravo ste nadogradili svoj paket pretplate. Potrebno je da omogućite onemogućene korisnike koji će koristiti Atlas. Ovo možete uraditi samo jednom za trenutnu pretplatu. Molimo birajte pažljivo',
+    'Upravo ste nadogradili svoj paket pretplate. Potrebno je da omogućite onemogućene korisnike koji će koristiti SignalCare. Ovo možete uraditi samo jednom za trenutnu pretplatu. Molimo birajte pažljivo',
   enable_users: 'Omogući korisnike',
   max_users_description: 'Možete omogućiti do {{maxUsers}} korisnika',
   downgrade_description:

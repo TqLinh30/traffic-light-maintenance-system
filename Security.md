@@ -2,9 +2,9 @@
 
 ## Security
 
-The security of Atlas CMMS is very important. Since Atlas CMMS is often self-hosted and may manage sensitive operational data, security vulnerabilities are treated with high priority.
+The security of SignalCare is very important. Since SignalCare is often self-hosted and may manage sensitive operational data, security vulnerabilities are treated with high priority.
 
-If you believe you have discovered a security vulnerability in Atlas CMMS, please report it responsibly as described below.
+If you believe you have discovered a security vulnerability in SignalCare, please report it responsibly as described below.
 
 ---
 
@@ -33,7 +33,7 @@ Please include as much of the following information as possible:
 
 - File paths or code locations involved
 
-- Version of Atlas CMMS affected
+- Version of SignalCare affected
 
 - Step-by-step instructions to reproduce the issue
 
@@ -71,7 +71,7 @@ We follow **responsible disclosure practices** and will:
 
 ## Security Best Practices for Self-Hosting
 
-When running Atlas CMMS:
+When running SignalCare:
 
 - Keep your Docker images up to date
 - Use strong database passwords
@@ -81,4 +81,4 @@ When running Atlas CMMS:
 
 ---
 
-Thank you for helping make Atlas CMMS more secure.
+Thank you for helping make SignalCare more secure.
