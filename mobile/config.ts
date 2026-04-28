@@ -1,12 +1,19 @@
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const expoExtra = Constants.expoConfig?.extra as
+  | {
+      API_URL?: string;
+      GOOGLE_KEY?: string;
+    }
+  | undefined;
+
 export const googleMapsConfig = {
-  apiKey: process.env.GOOGLE_KEY
+  apiKey: expoExtra?.GOOGLE_KEY ?? process.env.GOOGLE_KEY
 };
 
 // Default API URL from Expo config
-const defaultApiUrl = Constants.expoConfig.extra.API_URL;
+const defaultApiUrl = expoExtra?.API_URL;
 export const IS_LOCALHOST = false;
 
 const normalizeUrlScheme = (apiUrl: string): string =>

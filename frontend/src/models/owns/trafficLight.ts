@@ -26,6 +26,7 @@ export interface TrafficLightPointPublicDTO extends Audit {
   poleCode: string;
   name: string;
   address: string;
+  locationImageUrl?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   district?: string | null;
@@ -36,6 +37,8 @@ export interface TrafficLightPointPublicDTO extends Audit {
   trafficLightType?: string | null;
   controllerType?: string | null;
   installationDate?: string | null;
+  expectedWarrantyDate?: string | null;
+  maintenanceHistory?: string | null;
   maintenanceCycleDays?: number | null;
   lastInspectionAt?: string | null;
   lastMaintenanceAt?: string | null;
@@ -76,6 +79,7 @@ export interface TrafficLightPreventiveMaintenanceSummaryDTO {
 export interface TrafficLightPointDetailDTO {
   point: TrafficLightPointPublicDTO;
   activeQrPublicCode?: string | null;
+  activeQrPublicUrl?: string | null;
   preventiveMaintenances: TrafficLightPreventiveMaintenanceSummaryDTO[];
   recentWorkOrders: TrafficLightWorkOrderMini[];
 }

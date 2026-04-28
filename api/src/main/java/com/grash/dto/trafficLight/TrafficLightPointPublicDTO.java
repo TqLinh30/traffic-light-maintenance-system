@@ -18,6 +18,7 @@ public class TrafficLightPointPublicDTO extends AuditShowDTO {
     private String poleCode;
     private String name;
     private String address;
+    private String locationImageUrl;
     private Double latitude;
     private Double longitude;
     private String district;
@@ -28,6 +29,8 @@ public class TrafficLightPointPublicDTO extends AuditShowDTO {
     private String trafficLightType;
     private String controllerType;
     private Date installationDate;
+    private Date expectedWarrantyDate;
+    private String maintenanceHistory;
     private Integer maintenanceCycleDays;
     private Date lastInspectionAt;
     private Date lastMaintenanceAt;

@@ -3,6 +3,7 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 const apiUrl = process.env.API_URL;
 const googleServicesJson = process.env.GOOGLE_SERVICES_JSON;
+const googleKey = process.env.GOOGLE_KEY;
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -54,6 +55,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     API_URL: apiUrl,
+    GOOGLE_KEY: googleKey,
     eas: {
       projectId: '803b5007-0c60-4030-ac3a-c7630b223b92'
     }

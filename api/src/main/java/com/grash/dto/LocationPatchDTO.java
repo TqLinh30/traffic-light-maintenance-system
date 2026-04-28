@@ -6,9 +6,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 @Data
@@ -23,6 +23,20 @@ public class LocationPatchDTO {
     private Double latitude;
 
     private Boolean trafficLightEnabled;
+
+    private Date installationDate;
+
+    private Date expectedWarrantyDate;
+
+    private String maintenanceHistory;
+
+    private String generatedImageBase64;
+
+    private String generatedImageSourceUrl;
+
+    private String generatedImageFileName;
+
+    private String generatedImageContentType;
 
     @Schema(implementation = IdDTO.class)
     private Location parentLocation;

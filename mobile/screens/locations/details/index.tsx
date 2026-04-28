@@ -5,7 +5,7 @@ import { RootStackScreenProps } from '../../../types';
 import { useDispatch, useSelector } from '../../../store';
 import { useTranslation } from 'react-i18next';
 import * as React from 'react';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Dialog,
@@ -25,9 +25,9 @@ import LocationAssets from './LocationAssets';
 import LocationFiles from './LocationFiles';
 
 export default function LocationDetailsHome({
-                                              navigation,
-                                              route
-                                            }: RootStackScreenProps<'LocationDetails'>) {
+  navigation,
+  route
+}: RootStackScreenProps<'LocationDetails'>) {
   const { id, locationProp } = route.params;
 
   const { t } = useTranslation();
@@ -39,16 +39,41 @@ export default function LocationDetailsHome({
   const [tabIndex, setTabIndex] = useState(0);
   const [openDelete, setOpenDelete] = useState<boolean>(false);
   const { showSnackBar } = useContext(CustomSnackBarContext);
-  const [tabs] = useState([
-    { key: 'details', title: t('details') },
-    { key: 'work-orders', title: t('work_orders') },
-    { key: 'files', title: t('files') },
-    { key: 'assets', title: t('assets') }
-  ]);
+  const getTranslation = (key: string, fallback: string) => {
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  };
+  const tabs = useMemo(
+    () =>
+      location?.trafficLightEnabled
+        ? [
+            {
+              key: 'details',
+              title: getTranslation(
+                'traffic_light_point',
+                'Traffic Light Point'
+              )
+            },
+            { key: 'work-orders', title: t('work_orders') },
+            { key: 'files', title: t('files') }
+          ]
+        : [
+            { key: 'details', title: t('details') },
+            { key: 'work-orders', title: t('work_orders') },
+            { key: 'files', title: t('files') },
+            { key: 'assets', title: t('assets') }
+          ],
+    [location?.trafficLightEnabled, t]
+  );
+  useEffect(() => {
+    if (tabIndex >= tabs.length) {
+      setTabIndex(0);
+    }
+  }, [tabIndex, tabs.length]);
   const renderScene = ({ route, jumpTo }) => {
     switch (route.key) {
       case 'details':
-        return <LocationDetails location={location} />;
+        return <LocationDetails location={location} navigation={navigation} />;
       case 'work-orders':
         return (
           <LocationWorkOrders location={location} navigation={navigation} />
@@ -69,8 +94,7 @@ export default function LocationDetailsHome({
   );
 
   useEffect(() => {
-    if (!locationProp)
-      dispatch(getLocationDetails(id));
+    if (!locationProp) dispatch(getLocationDetails(id));
   }, [locationProp]);
   useEffect(() => {
     navigation.setOptions({
@@ -90,7 +114,7 @@ export default function LocationDetailsHome({
             });
           }}
         >
-          <IconButton icon='dots-vertical' />
+          <IconButton icon="dots-vertical" />
         </Pressable>
       )
     });
@@ -115,7 +139,7 @@ export default function LocationDetailsHome({
         <Dialog visible={openDelete} onDismiss={() => setOpenDelete(false)}>
           <Dialog.Title>{t('confirmation')}</Dialog.Title>
           <Dialog.Content>
-            <Text variant='bodyMedium'>{t('confirm_delete_location')}</Text>
+            <Text variant="bodyMedium">{t('confirm_delete_location')}</Text>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setOpenDelete(false)}>{t('cancel')}</Button>

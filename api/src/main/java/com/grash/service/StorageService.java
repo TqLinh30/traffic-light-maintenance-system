@@ -13,6 +13,8 @@ public interface StorageService {
      */
     String upload(MultipartFile file, String folder);
 
+    String upload(byte[] bytes, String fileName, String contentType, String folder);
+
     /**
      * Downloads a file from the storage using its file path.
      *

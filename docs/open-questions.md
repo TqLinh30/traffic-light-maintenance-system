@@ -79,6 +79,7 @@
   - `Maps JavaScript API`
   - `Geocoding API`
   - the relevant `Places` API support used by the Maps JavaScript `places` library
+- If mobile keeps using Google Maps JavaScript inside a `WebView` instead of a native Google Maps SDK, should the project use a separate less-restrictive browser key for mobile dev or migrate later to a native mobile Maps integration with Android or iOS app restrictions?
 
 ## Resolved Post-Phase QR Provisioning
 - The project stays point-centric:
@@ -90,3 +91,15 @@
   - `TrafficLightPoint`
   - default `poleCode`
   - active `QrTag.qrPublicCode`
+
+## Resolved Post-Phase Traffic-Light Edit And QR Detail Parity
+- The web `Edit Location` modal now exposes the same traffic-light-first surface as create for traffic-light-enabled locations:
+  - `name`
+  - `address`
+  - always-visible map picker
+  - Street View preview
+  - image replacement or fallback repair path
+  - `installationDate`
+  - `expectedWarrantyDate`
+  - manual `maintenanceHistory`
+- The public QR landing page now shows a richer pole summary with signed location image support and lifecycle metadata directly on the resolved point DTO.

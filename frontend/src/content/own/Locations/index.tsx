@@ -71,8 +71,13 @@ import SearchInput from '../components/SearchInput';
 import api, { getErrorMessage } from '../../../utils/api';
 import {
   TrafficLightMapPointDTO,
+  TrafficLightPointDetailDTO,
   TrafficLightStatus
 } from '../../../models/owns/trafficLight';
+import TrafficLightLocationCreateForm, {
+  createGeneratedLocationImagePayload,
+  TrafficLightLocationCreateValues
+} from './TrafficLightLocationCreateForm';
 
 const HIERARCHY_ZERO_PAGE_SIZE = 40;
 const ALL_FILTER_VALUE = 'ALL';
@@ -106,6 +111,25 @@ const toReadableLabel = (value?: string | null) =>
 const getTrafficLightMarkerColor = (status: TrafficLightStatus) =>
   trafficLightMarkerColors[status] ?? '#757575';
 
+const toIsoDateAtStartOfDay = (value?: string | null) =>
+  value ? new Date(`${value}T00:00:00`).toISOString() : null;
+
+const toDateInputValue = (value?: string | Date | null) => {
+  if (!value) {
+    return '';
+  }
+
+  const resolvedDate = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(resolvedDate.getTime())) {
+    return '';
+  }
+
+  const year = resolvedDate.getFullYear();
+  const month = String(resolvedDate.getMonth() + 1).padStart(2, '0');
+  const day = String(resolvedDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 function Locations() {
   const { t }: { t: any } = useTranslation();
   const [currentTab, setCurrentTab] = useState<string>('list');
@@ -118,14 +142,6 @@ function Locations() {
   const { locationsHierarchy, locations, loadingGet } = useSelector(
     (state) => state.locations
   );
-  const [deployedLocations, setDeployedLocations] = useState<
-    { id: number; hierarchy: number[] }[]
-  >([
-    {
-      id: 0,
-      hierarchy: []
-    }
-  ]);
 
   const { exportEntity, loadingExport } = useExport();
   const tabs = [
@@ -143,6 +159,12 @@ function Locations() {
   const [openAddModal, setOpenAddModal] = useState<boolean>(false);
   const [openUpdateModal, setOpenUpdateModal] = useState<boolean>(false);
   const [openDrawer, setOpenDrawer] = useState<boolean>(false);
+  const [editingTrafficLightDetails, setEditingTrafficLightDetails] =
+    useState<TrafficLightPointDetailDTO | null>(null);
+  const [
+    loadingEditingTrafficLightDetails,
+    setLoadingEditingTrafficLightDetails
+  ] = useState<boolean>(false);
   const { setTitle } = useContext(TitleContext);
   const { locationId } = useParams();
   const { uploadFiles } = useContext(CompanySettingsContext);
@@ -155,6 +177,8 @@ function Locations() {
     hasFeature
   } = useAuth();
   const [currentLocation, setCurrentLocation] = useState<Location>();
+  const [locationDetailsRefreshKey, setLocationDetailsRefreshKey] =
+    useState<number>(0);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const openMenu = Boolean(anchorEl);
   const navigate = useNavigate();
@@ -213,8 +237,14 @@ function Locations() {
   };
   const handleDelete = (id: number) => {
     handleCloseDetails();
-    dispatch(deleteLocation(id)).then(onDeleteSuccess).catch(onDeleteFailure);
     setOpenDelete(false);
+    dispatch(deleteLocation(id))
+      .then(() => {
+        setCurrentLocation(undefined);
+        refreshLocationLists();
+        onDeleteSuccess();
+      })
+      .catch(onDeleteFailure);
   };
   const onCreationSuccess = () => {
     setOpenAddModal(false);
@@ -227,7 +257,7 @@ function Locations() {
     showSnackBar(t('changes_saved_success'), 'success');
   };
   const onEditFailure = (err) =>
-    showSnackBar(t('location_edit_failure'), 'error');
+    showSnackBar(getErrorMessage(err, t('location_edit_failure')), 'error');
   const onDeleteSuccess = () => {
     showSnackBar(t('location_delete_success'), 'success');
   };
@@ -283,7 +313,6 @@ function Locations() {
         await dispatch(
           getLocationChildren(row.id, row.hierarchy || [], pageable)
         );
-        setDeployedLocations((prevState) => [...prevState, row]);
 
         // Clean up the loading row once the fetch is complete
         setSubRowsMap((prev) => {
@@ -303,6 +332,53 @@ function Locations() {
       handleOpenDetails(Number(locationId));
     }
   }, [locations]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!openUpdateModal || !currentLocation?.trafficLightEnabled) {
+      setEditingTrafficLightDetails(null);
+      setLoadingEditingTrafficLightDetails(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setLoadingEditingTrafficLightDetails(true);
+    api
+      .get<TrafficLightPointDetailDTO>(
+        `traffic-light-points/location/${currentLocation.id}`
+      )
+      .then((response) => {
+        if (active) {
+          setEditingTrafficLightDetails(response);
+        }
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+        setEditingTrafficLightDetails(null);
+        showSnackBar(
+          getErrorMessage(error, 'Failed to load traffic light details'),
+          'error'
+        );
+      })
+      .finally(() => {
+        if (active) {
+          setLoadingEditingTrafficLightDetails(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    currentLocation?.id,
+    currentLocation?.trafficLightEnabled,
+    openUpdateModal,
+    showSnackBar
+  ]);
 
   const loadTrafficLightMapPoints = React.useCallback(async () => {
     if (!hasViewPermission(PermissionEntity.LOCATIONS)) {
@@ -510,58 +586,58 @@ function Locations() {
       type: 'checkbox',
       label: t('traffic_light_location')
     },
-    {
-      name: 'parentLocation',
-      type: 'select',
-      type2: 'parentLocation',
-      label: t('parent_location'),
-      placeholder: t('select_location')
-    },
-    {
-      name: 'workers',
-      multiple: true,
-      type: 'select',
-      type2: 'user',
-      label: t('workers'),
-      placeholder: t('select_workers')
-    },
-    {
-      name: 'teams',
-      multiple: true,
-      type: 'select',
-      type2: 'team',
-      label: t('teams'),
-      placeholder: 'Select teams'
-    },
-    {
-      name: 'vendors',
-      multiple: true,
-      type: 'select',
-      type2: 'vendor',
-      label: t('vendors'),
-      placeholder: 'Select vendors'
-    },
-    {
-      name: 'customers',
-      multiple: true,
-      type: 'select',
-      type2: 'customer',
-      label: t('customers'),
-      placeholder: 'Select customers'
-    },
+    // {
+    //   name: 'parentLocation',
+    //   type: 'select',
+    //   type2: 'parentLocation',
+    //   label: t('parent_location'),
+    //   placeholder: t('select_location')
+    // },
+    // {
+    //   name: 'workers',
+    //   multiple: true,
+    //   type: 'select',
+    //   type2: 'user',
+    //   label: t('workers'),
+    //   placeholder: t('select_workers')
+    // },
+    // {
+    //   name: 'teams',
+    //   multiple: true,
+    //   type: 'select',
+    //   type2: 'team',
+    //   label: t('teams'),
+    //   placeholder: 'Select teams'
+    // },
+    // {
+    //   name: 'vendors',
+    //   multiple: true,
+    //   type: 'select',
+    //   type2: 'vendor',
+    //   label: t('vendors'),
+    //   placeholder: 'Select vendors'
+    // },
+    // {
+    //   name: 'customers',
+    //   multiple: true,
+    //   type: 'select',
+    //   type2: 'customer',
+    //   label: t('customers'),
+    //   placeholder: 'Select customers'
+    // },
     {
       name: 'image',
       type: 'file',
       fileType: 'image',
       label: t('image')
-    },
-    {
-      name: 'files',
-      type: 'file',
-      multiple: true,
-      label: t('files'),
-      fileType: 'file'
     }
+    // {
+    //   name: 'files',
+    //   type: 'file',
+    //   multiple: true,
+    //   label: t('files'),
+    //   fileType: 'file'
+    // }
   ];
 
   const getEditFields = () => {
@@ -571,9 +647,150 @@ function Locations() {
   const handleReset = (callApi: boolean) => {
     dispatch(resetLocationsHierarchy(pageable, callApi));
   };
+  const refreshLocationLists = (refreshTrafficLightMap = false) => {
+    dispatch(getLocations());
+    handleReset(true);
+    if (
+      refreshTrafficLightMap ||
+      currentTab === 'trafficLightMap' ||
+      trafficLightMapPoints.length > 0
+    ) {
+      loadTrafficLightMapPoints();
+    }
+  };
   const shape = {
     name: Yup.string().required(t('required_location_name')),
     address: Yup.string().required(t('required_location_address')).nullable()
+  };
+
+  const handleTrafficLightLocationCreate = async (
+    values: TrafficLightLocationCreateValues
+  ) => {
+    const { streetViewCapture, ...persistedValues } = values;
+    let formattedValues = formatValues({
+      ...persistedValues,
+      installationDate: toIsoDateAtStartOfDay(persistedValues.installationDate),
+      expectedWarrantyDate: toIsoDateAtStartOfDay(
+        persistedValues.expectedWarrantyDate
+      ),
+      maintenanceHistory: persistedValues.maintenanceHistory.trim() || null,
+      trafficLightEnabled: true
+    });
+
+    try {
+      const uploadedFiles = await uploadFiles(
+        formattedValues.files ?? [],
+        values.image?.length ? formattedValues.image : []
+      );
+      const uploadedImage = uploadedFiles.find(
+        (file) => file.type === 'IMAGE'
+      );
+      if (values.image?.length && !uploadedImage) {
+        throw new Error('Image upload failed');
+      }
+
+      const imageAndFiles = getImageAndFiles(uploadedFiles);
+      const generatedImagePayload =
+        values.image?.length || !values.coordinates
+          ? null
+          : await createGeneratedLocationImagePayload(
+              values.coordinates,
+              apiKey,
+              values.name,
+              streetViewCapture
+            );
+      formattedValues = {
+        ...formattedValues,
+        trafficLightEnabled: true,
+        image: imageAndFiles.image,
+        files: imageAndFiles.files,
+        generatedImageBase64: generatedImagePayload?.base64 ?? null,
+        generatedImageSourceUrl: generatedImagePayload?.sourceUrl ?? null,
+        generatedImageFileName: generatedImagePayload?.fileName ?? null,
+        generatedImageContentType: generatedImagePayload?.contentType ?? null
+      };
+
+      await dispatch(addLocation(formattedValues));
+      onCreationSuccess();
+      refreshLocationLists();
+    } catch (err) {
+      onCreationFailure(err);
+      throw err;
+    }
+  };
+
+  const handleTrafficLightLocationUpdate = async (
+    values: TrafficLightLocationCreateValues
+  ) => {
+    if (!currentLocation) {
+      return;
+    }
+
+    const { streetViewCapture, ...persistedValues } = values;
+    let formattedValues = formatValues({
+      ...persistedValues,
+      installationDate: toIsoDateAtStartOfDay(persistedValues.installationDate),
+      expectedWarrantyDate: toIsoDateAtStartOfDay(
+        persistedValues.expectedWarrantyDate
+      ),
+      maintenanceHistory: persistedValues.maintenanceHistory.trim() || null,
+      trafficLightEnabled: true
+    });
+
+    try {
+      const uploadedFiles = await uploadFiles(
+        [],
+        values.image?.length ? formattedValues.image : []
+      );
+      const uploadedImage = uploadedFiles.find(
+        (file) => file.type === 'IMAGE'
+      );
+      if (values.image?.length && !uploadedImage) {
+        throw new Error('Image upload failed');
+      }
+      const existingImageFallback = currentLocation.image?.id
+        ? { id: currentLocation.image.id }
+        : null;
+      const imageAndFiles = getImageAndFiles(
+        uploadedFiles,
+        existingImageFallback
+      );
+      const generatedImagePayload =
+        values.image?.length || !values.coordinates
+          ? null
+          : await createGeneratedLocationImagePayload(
+              values.coordinates,
+              apiKey,
+              values.name,
+              streetViewCapture
+            );
+
+      formattedValues = {
+        ...formattedValues,
+        trafficLightEnabled: true,
+        image: imageAndFiles.image,
+        files:
+          currentLocation.files?.map((file) => ({
+            id: file.id
+          })) ?? [],
+        generatedImageBase64: generatedImagePayload?.base64 ?? null,
+        generatedImageSourceUrl: generatedImagePayload?.sourceUrl ?? null,
+        generatedImageFileName: generatedImagePayload?.fileName ?? null,
+        generatedImageContentType: generatedImagePayload?.contentType ?? null
+      };
+
+      await dispatch(editLocation(currentLocation.id, formattedValues));
+      const refreshedLocation = await api.get<Location>(
+        `locations/${currentLocation.id}`
+      );
+      setCurrentLocation(refreshedLocation);
+      setLocationDetailsRefreshKey((key) => key + 1);
+      refreshLocationLists();
+      onEditSuccess();
+    } catch (err) {
+      onEditFailure(err);
+      throw err;
+    }
   };
 
   const renderLocationAddModal = () => (
@@ -602,43 +819,10 @@ function Locations() {
         }}
       >
         <Box>
-          <Form
-            fields={fields}
-            validation={Yup.object().shape(shape)}
+          <TrafficLightLocationCreateForm
+            apiKey={apiKey}
             submitText={t('add')}
-            values={{}}
-            onChange={({ field, e }) => {}}
-            onSubmit={async (values) => {
-              let formattedValues = formatValues(values);
-              try {
-                const uploadedFiles = await uploadFiles(
-                  formattedValues.files,
-                  formattedValues.image
-                );
-
-                const imageAndFiles = getImageAndFiles(uploadedFiles);
-                formattedValues = {
-                  ...formattedValues,
-                  image: imageAndFiles.image,
-                  files: imageAndFiles.files
-                };
-
-                await dispatch(addLocation(formattedValues));
-                onCreationSuccess();
-                deployedLocations.forEach((deployedLocation) =>
-                  dispatch(
-                    getLocationChildren(
-                      deployedLocation.id,
-                      deployedLocation.hierarchy,
-                      pageable
-                    )
-                  )
-                );
-              } catch (err) {
-                onCreationFailure(err);
-                throw err;
-              }
-            }}
+            onSubmit={handleTrafficLightLocationCreate}
           />
         </Box>
       </DialogContent>
@@ -699,80 +883,129 @@ function Locations() {
         }}
       >
         <Box>
-          <Form
-            fields={getEditFields()}
-            validation={Yup.object().shape(shape)}
-            submitText={t('save')}
-            values={{
-              ...currentLocation,
-              trafficLightEnabled:
-                currentLocation?.trafficLightEnabled ?? false,
-              title: currentLocation?.name,
-              workers: currentLocation?.workers.map((worker) => {
-                return {
-                  label: `${worker.firstName} ${worker.lastName}`,
-                  value: worker.id
-                };
-              }),
-              teams: currentLocation?.teams.map((team) => {
-                return {
-                  label: team.name,
-                  value: team.id
-                };
-              }),
-              vendors: currentLocation?.vendors.map((vendor) => {
-                return {
-                  label: vendor.companyName,
-                  value: vendor.id
-                };
-              }),
-              customers: currentLocation?.customers.map((customer) => {
-                return {
-                  label: customer.name,
-                  value: customer.id
-                };
-              }),
-              coordinates: currentLocation?.longitude
-                ? {
-                    lng: currentLocation.longitude,
-                    lat: currentLocation.latitude
-                  }
-                : null,
-              parentLocation: currentLocation?.parentLocation
-                ? {
-                    label: currentLocation.parentLocation.name,
-                    value: currentLocation.parentLocation.id
-                  }
-                : null
-            }}
-            onChange={({ field, e }) => {}}
-            onSubmit={async (values) => {
-              let formattedValues = formatValues(values);
-              try {
-                const imageAndFiles = await handleFileUpload(
-                  {
-                    files: formattedValues.files,
-                    image: formattedValues.image
-                  },
-                  uploadFiles
-                );
+          {currentLocation?.trafficLightEnabled ? (
+            loadingEditingTrafficLightDetails ? (
+              <Stack direction="row" justifyContent="center" py={4}>
+                <CircularProgress />
+              </Stack>
+            ) : (
+              <TrafficLightLocationCreateForm
+                apiKey={apiKey}
+                submitText={t('save')}
+                existingImageUrl={
+                  editingTrafficLightDetails?.point.locationImageUrl ??
+                  currentLocation?.image?.url ??
+                  null
+                }
+                initialValues={{
+                  name: currentLocation?.name ?? '',
+                  address: currentLocation?.address ?? '',
+                  coordinates:
+                    currentLocation?.longitude !== null &&
+                    currentLocation?.longitude !== undefined &&
+                    currentLocation?.latitude !== null &&
+                    currentLocation?.latitude !== undefined
+                      ? {
+                          lng: currentLocation.longitude,
+                          lat: currentLocation.latitude
+                        }
+                      : null,
+                  image: [],
+                  files: [],
+                  trafficLightEnabled: true,
+                  installationDate: toDateInputValue(
+                    editingTrafficLightDetails?.point.installationDate
+                  ),
+                  expectedWarrantyDate: toDateInputValue(
+                    editingTrafficLightDetails?.point.expectedWarrantyDate
+                  ),
+                  maintenanceHistory:
+                    editingTrafficLightDetails?.point.maintenanceHistory ?? ''
+                }}
+                onSubmit={handleTrafficLightLocationUpdate}
+              />
+            )
+          ) : (
+            <Form
+              fields={getEditFields()}
+              validation={Yup.object().shape(shape)}
+              submitText={t('save')}
+              values={{
+                ...currentLocation,
+                trafficLightEnabled:
+                  currentLocation?.trafficLightEnabled ?? false,
+                title: currentLocation?.name,
+                workers: currentLocation?.workers.map((worker) => {
+                  return {
+                    label: `${worker.firstName} ${worker.lastName}`,
+                    value: worker.id
+                  };
+                }),
+                teams: currentLocation?.teams.map((team) => {
+                  return {
+                    label: team.name,
+                    value: team.id
+                  };
+                }),
+                vendors: currentLocation?.vendors.map((vendor) => {
+                  return {
+                    label: vendor.companyName,
+                    value: vendor.id
+                  };
+                }),
+                customers: currentLocation?.customers.map((customer) => {
+                  return {
+                    label: customer.name,
+                    value: customer.id
+                  };
+                }),
+                coordinates: currentLocation?.longitude
+                  ? {
+                      lng: currentLocation.longitude,
+                      lat: currentLocation.latitude
+                    }
+                  : null,
+                parentLocation: currentLocation?.parentLocation
+                  ? {
+                      label: currentLocation.parentLocation.name,
+                      value: currentLocation.parentLocation.id
+                    }
+                  : null
+              }}
+              onChange={({ field, e }) => {}}
+              onSubmit={async (values) => {
+                let formattedValues = formatValues(values);
+                try {
+                  const imageAndFiles = await handleFileUpload(
+                    {
+                      files: formattedValues.files,
+                      image: formattedValues.image
+                    },
+                    uploadFiles
+                  );
 
-                formattedValues = {
-                  ...formattedValues,
-                  image: imageAndFiles.image,
-                  files: imageAndFiles.files
-                };
+                  formattedValues = {
+                    ...formattedValues,
+                    image: imageAndFiles.image,
+                    files: imageAndFiles.files
+                  };
 
-                await dispatch(
-                  editLocation(currentLocation.id, formattedValues)
-                );
-                await onEditSuccess();
-              } catch (err) {
-                onEditFailure(err);
-                throw err;
-              }
-            }}
-          />
+                  await dispatch(
+                    editLocation(currentLocation.id, formattedValues)
+                  );
+                  const refreshedLocation = await api.get<Location>(
+                    `locations/${currentLocation.id}`
+                  );
+                  setCurrentLocation(refreshedLocation);
+                  setLocationDetailsRefreshKey((key) => key + 1);
+                  onEditSuccess();
+                } catch (err) {
+                  onEditFailure(err);
+                  throw err;
+                }
+              }}
+            />
+          )}
         </Box>
       </DialogContent>
     </Dialog>
@@ -1163,6 +1396,7 @@ function Locations() {
             location={currentLocation}
             handleOpenUpdate={handleOpenUpdate}
             handleOpenDelete={onOpenDeleteDialog}
+            refreshKey={locationDetailsRefreshKey}
           />
         </Drawer>
         <ConfirmDialog
@@ -1170,7 +1404,11 @@ function Locations() {
           onCancel={() => {
             setOpenDelete(false);
           }}
-          onConfirm={() => handleDelete(currentLocation?.id)}
+          onConfirm={() => {
+            if (currentLocation?.id) {
+              handleDelete(currentLocation.id);
+            }
+          }}
           confirmText={t('to_delete')}
           question={t('confirm_delete_location')}
         />

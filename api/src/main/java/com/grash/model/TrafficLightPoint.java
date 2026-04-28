@@ -65,6 +65,11 @@ public class TrafficLightPoint extends CompanyAudit {
 
     private Date installationDate;
 
+    private Date expectedWarrantyDate;
+
+    @Column(length = 4000)
+    private String maintenanceHistory;
+
     private Integer maintenanceCycleDays;
 
     @Column(name = "is_active", nullable = false)

@@ -102,6 +102,21 @@ const formatDateTime = (value?: string | null) => {
   }).format(date);
 };
 
+const formatDate = (value?: string | null) => {
+  if (!value) {
+    return '-';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '-';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium'
+  }).format(date);
+};
+
 const getStatusChipStyles = (status: TrafficLightStatus, theme: Theme) => {
   switch (status) {
     case 'HEALTHY':
@@ -450,60 +465,85 @@ export default function TrafficLightQrPublicPage() {
         borderRadius: 3
       }}
     >
-      <Stack spacing={2.5}>
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          justifyContent="space-between"
-          alignItems={{ xs: 'flex-start', md: 'center' }}
-        >
-          <Stack spacing={1}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <TrafficOutlinedIcon color="primary" />
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {currentPoint.name}
-              </Typography>
+      <Grid container spacing={3} alignItems="stretch">
+        <Grid item xs={12} md={currentPoint.locationImageUrl ? 7 : 12}>
+          <Stack spacing={2.5} sx={{ height: '100%' }}>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={2}
+              justifyContent="space-between"
+              alignItems={{ xs: 'flex-start', md: 'center' }}
+            >
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <TrafficOutlinedIcon color="primary" />
+                  <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                    {currentPoint.name}
+                  </Typography>
+                </Stack>
+                <Typography variant="body1" color="text.secondary">
+                  {currentPoint.address}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t('pole_code')}: {currentPoint.poleCode}
+                </Typography>
+              </Stack>
+
+              <Chip
+                label={toReadableLabel(currentPoint.currentStatus)}
+                sx={getStatusChipStyles(currentPoint.currentStatus, theme)}
+              />
             </Stack>
-            <Typography variant="body1" color="text.secondary">
-              {currentPoint.address}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {t('pole_code')}: {currentPoint.poleCode}
-            </Typography>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              {pageMode !== 'form' && (
+                <Button
+                  variant="contained"
+                  startIcon={<ReportProblemOutlinedIcon />}
+                  onClick={() =>
+                    navigate(`/traffic-light/${qrPublicCode}/report`)
+                  }
+                >
+                  {t('report_issue')}
+                </Button>
+              )}
+              {pageMode === 'landing' && (
+                <Button variant="outlined" onClick={handleViewPointDetails}>
+                  {t('view_point_details')}
+                </Button>
+              )}
+              {pageMode !== 'landing' && (
+                <Button
+                  variant="text"
+                  startIcon={<ArrowBackOutlinedIcon />}
+                  onClick={() => navigate(`/traffic-light/${qrPublicCode}`)}
+                >
+                  {t('back_to_point')}
+                </Button>
+              )}
+            </Stack>
           </Stack>
-
-          <Chip
-            label={toReadableLabel(currentPoint.currentStatus)}
-            sx={getStatusChipStyles(currentPoint.currentStatus, theme)}
-          />
-        </Stack>
-
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          {pageMode !== 'form' && (
-            <Button
-              variant="contained"
-              startIcon={<ReportProblemOutlinedIcon />}
-              onClick={() => navigate(`/traffic-light/${qrPublicCode}/report`)}
-            >
-              {t('report_issue')}
-            </Button>
-          )}
-          {pageMode === 'landing' && (
-            <Button variant="outlined" onClick={handleViewPointDetails}>
-              {t('view_point_details')}
-            </Button>
-          )}
-          {pageMode !== 'landing' && (
-            <Button
-              variant="text"
-              startIcon={<ArrowBackOutlinedIcon />}
-              onClick={() => navigate(`/traffic-light/${qrPublicCode}`)}
-            >
-              {t('back_to_point')}
-            </Button>
-          )}
-        </Stack>
-      </Stack>
+        </Grid>
+        {currentPoint.locationImageUrl && (
+          <Grid item xs={12} md={5}>
+            <Box
+              component="img"
+              src={currentPoint.locationImageUrl}
+              alt={currentPoint.name}
+              sx={{
+                width: '100%',
+                height: '100%',
+                minHeight: 240,
+                maxHeight: 320,
+                objectFit: 'cover',
+                borderRadius: 2,
+                border: 1,
+                borderColor: 'divider'
+              }}
+            />
+          </Grid>
+        )}
+      </Grid>
     </Paper>
   );
 
@@ -609,6 +649,18 @@ export default function TrafficLightQrPublicPage() {
               <Grid container spacing={2} ref={detailsRef}>
                 <Grid item xs={12} sm={6} md={3}>
                   <DetailField
+                    label="Installation date"
+                    value={formatDate(point.installationDate)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <DetailField
+                    label="Expected warranty date"
+                    value={formatDate(point.expectedWarrantyDate)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <DetailField
                     label={t('latest_maintenance')}
                     value={formatDateTime(point.lastMaintenanceAt)}
                   />
@@ -617,6 +669,12 @@ export default function TrafficLightQrPublicPage() {
                   <DetailField
                     label={t('next_maintenance')}
                     value={formatDateTime(point.nextMaintenanceAt)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <DetailField
+                    label="Last inspection"
+                    value={formatDateTime(point.lastInspectionAt)}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
@@ -659,6 +717,22 @@ export default function TrafficLightQrPublicPage() {
                   />
                 </Grid>
               </Grid>
+
+              <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 3 }}>
+                <Stack spacing={1.5}>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    Repair and maintenance notes
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    color="text.secondary"
+                    sx={{ whiteSpace: 'pre-wrap' }}
+                  >
+                    {point.maintenanceHistory ||
+                      'No repair or maintenance notes yet'}
+                  </Typography>
+                </Stack>
+              </Paper>
 
               {activeWorkOrders.length > 0 && (
                 <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 3 }}>

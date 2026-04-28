@@ -47,10 +47,11 @@ public class MinioService implements StorageService {
         }
         try {
             URI minioEndpointURI = new URI(minioEndpoint);
+            String effectiveMinioPublicEndpoint = normalizeLocalhostPublicEndpoint(minioPublicEndpoint);
             MinioClient.Builder minioClientBuilder = MinioClient.builder()
-                    .endpoint(minioPublicEndpoint)
+                    .endpoint(effectiveMinioPublicEndpoint)
                     .credentials(minioAccessKey, minioSecretKey);
-            if (Helper.isLocalhost(minioPublicEndpoint)) minioClientBuilder.httpClient(
+            if (Helper.isLocalhost(effectiveMinioPublicEndpoint)) minioClientBuilder.httpClient(
                     new OkHttpClient.Builder().proxy(new Proxy(Proxy.Type.HTTP,
                             new InetSocketAddress(minioEndpointURI.getHost(), minioEndpointURI.getPort()))).build()
             );
@@ -79,6 +80,26 @@ public class MinioService implements StorageService {
                             .object(filePath)
                             .stream(file.getInputStream(), file.getSize(), -1)
                             .contentType(file.getContentType())
+                            .build()
+            );
+
+            return filePath;
+        } catch (MinioException | IOException | InvalidKeyException | NoSuchAlgorithmException e) {
+            throw new CustomException(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+    }
+
+    public String upload(byte[] bytes, String fileName, String contentType, String folder) {
+        checkIfConfigured();
+        Helper helper = new Helper();
+        String filePath = folder + "/" + helper.generateString() + " " + fileName;
+        try {
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(minioBucket)
+                            .object(filePath)
+                            .stream(new java.io.ByteArrayInputStream(bytes), bytes.length, -1)
+                            .contentType(contentType)
                             .build()
             );
 
@@ -157,5 +178,15 @@ public class MinioService implements StorageService {
             throw new CustomException("MinIO is not configured. Please define the MinIO credentials in the env " +
                     "variables",
                     HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private String normalizeLocalhostPublicEndpoint(String publicEndpoint) throws URISyntaxException {
+        URI publicEndpointURI = new URI(publicEndpoint);
+        if (!"localhost".equalsIgnoreCase(publicEndpointURI.getHost())) {
+            return publicEndpoint;
+        }
+        return new URI(publicEndpointURI.getScheme(), publicEndpointURI.getUserInfo(), "127.0.0.1",
+                publicEndpointURI.getPort(), publicEndpointURI.getPath(), publicEndpointURI.getQuery(),
+                publicEndpointURI.getFragment()).toString();
     }
 }

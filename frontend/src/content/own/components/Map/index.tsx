@@ -24,6 +24,7 @@ interface MapProps {
   locations?: Location[];
   select?: boolean;
   selected?: { lat: number; lng: number } | null;
+  selectedHeading?: number | null;
   searchAddress?: string | null;
   searchRequestId?: number;
   onAddressConfirm?: (address: string) => void;
@@ -72,6 +73,26 @@ const SPECIFIC_ADDRESS_TYPES = ['street_address', 'premise', 'subpremise'];
 const buildCoordinateLabel = (coordinates: { lat: number; lng: number }) =>
   `${coordinates.lat.toFixed(6)}, ${coordinates.lng.toFixed(6)}`;
 
+const normalizeHeading = (heading?: number | null) =>
+  heading !== undefined && heading !== null && Number.isFinite(heading)
+    ? ((heading % 360) + 360) % 360
+    : null;
+
+const areCoordinatesApproximatelyEqual = (
+  left: { lat: number; lng: number } | null,
+  right: { lat: number; lng: number } | null,
+  epsilon = 0.000001
+) => {
+  if (!left || !right) {
+    return false;
+  }
+
+  return (
+    Math.abs(left.lat - right.lat) <= epsilon &&
+    Math.abs(left.lng - right.lng) <= epsilon
+  );
+};
+
 const hasAnyType = (types: string[] | undefined, candidateTypes: string[]) =>
   candidateTypes.some((candidateType) => types?.includes(candidateType));
 
@@ -85,7 +106,8 @@ function LocalMap({
   onSelect,
   searchAddress,
   searchRequestId,
-  selected
+  selected,
+  selectedHeading
 }: MapProps) {
   const mapRef = useRef<GoogleMap>(null);
   const [selectedLocation, setSelectedLocation] = useState<Location>();
@@ -95,6 +117,7 @@ function LocalMap({
   } | null>(selected ?? null);
   const [selectedPlacePreview, setSelectedPlacePreview] =
     useState<SelectedPlacePreview | null>(null);
+  const selectedPlacePreviewRef = useRef<SelectedPlacePreview | null>(null);
   const geocodeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHandledSearchKeyRef = useRef<string | null>(null);
   const onSelectRef = useRef<MapProps['onSelect']>(onSelect);
@@ -111,6 +134,38 @@ function LocalMap({
     selectedCoordinatesRef.current = selectedCoordinates;
   }, [selectedCoordinates]);
 
+  const setCurrentSelectedCoordinates = (coordinates: {
+    lat: number;
+    lng: number;
+  }) => {
+    selectedCoordinatesRef.current = coordinates;
+    setSelectedCoordinates(coordinates);
+  };
+
+  const setSelectedPlacePreviewState = (
+    next:
+      | SelectedPlacePreview
+      | null
+      | ((current: SelectedPlacePreview | null) => SelectedPlacePreview | null)
+  ) => {
+    setSelectedPlacePreview((currentPreview) => {
+      const resolvedPreview =
+        typeof next === 'function' ? next(currentPreview) : next;
+      selectedPlacePreviewRef.current = resolvedPreview;
+      return resolvedPreview;
+    });
+  };
+
+  const isSelectionRequestCurrent = (coordinates: {
+    lat: number;
+    lng: number;
+  }) =>
+    !selectedCoordinatesRef.current ||
+    areCoordinatesApproximatelyEqual(
+      coordinates,
+      selectedCoordinatesRef.current
+    );
+
   const getPlacesService = () => {
     if (!window.google?.maps?.places?.PlacesService) {
       return null;
@@ -123,7 +178,8 @@ function LocalMap({
 
   const focusOnCoordinates = (
     coordinates: { lat: number; lng: number },
-    viewport?: google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral
+    viewport?: google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral,
+    options?: { preserveZoom?: boolean }
   ) => {
     if (viewport) {
       mapRef.current?.fitBounds(viewport);
@@ -131,6 +187,9 @@ function LocalMap({
     }
 
     mapRef.current?.panTo(coordinates);
+    if (options?.preserveZoom) {
+      return;
+    }
     (mapRef.current as any)?.setZoom?.(SELECTED_LOCATION_ZOOM);
   };
 
@@ -141,13 +200,41 @@ function LocalMap({
     googleMapsUrl = null,
     loading
   }: SelectedPlacePreview) => {
-    setSelectedPlacePreview({
+    setSelectedPlacePreviewState({
       title,
       address,
       coordinates,
       googleMapsUrl,
       loading
     });
+  };
+
+  const getSelectedMarkerIcon = (heading?: number | null) => {
+    const normalizedHeading = normalizeHeading(heading);
+    if (normalizedHeading === null) {
+      return {
+        url: '/static/images/markers/red.png',
+        scaledSize: window.google?.maps?.Size
+          ? new window.google.maps.Size(25, 25)
+          : undefined
+      };
+    }
+
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+        <g transform="rotate(${normalizedHeading} 24 24)">
+          <path d="M24 4 L35 29 A13 13 0 0 1 13 29 Z" fill="#9ca3af" fill-opacity="0.38" stroke="#64748b" stroke-width="2"/>
+        </g>
+        <circle cx="24" cy="24" r="8" fill="#f44336" stroke="#ffffff" stroke-width="3"/>
+        <circle cx="24" cy="24" r="3" fill="#ffffff"/>
+      </svg>
+    `.trim();
+
+    return {
+      url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+      scaledSize: new window.google.maps.Size(42, 42),
+      anchor: new window.google.maps.Point(21, 21)
+    };
   };
 
   const findPlaceByQuery = (
@@ -325,19 +412,25 @@ function LocalMap({
     title = null,
     address,
     coordinates,
+    requestCoordinates = coordinates,
     viewport,
     googleMapsUrl = null
   }: {
     title?: string | null;
     address: string;
     coordinates: { lat: number; lng: number };
+    requestCoordinates?: { lat: number; lng: number };
     viewport?:
       | google.maps.LatLngBounds
       | google.maps.LatLngBoundsLiteral
       | undefined;
     googleMapsUrl?: string | null;
   }) => {
-    setSelectedCoordinates(coordinates);
+    if (!isSelectionRequestCurrent(requestCoordinates)) {
+      return;
+    }
+
+    setCurrentSelectedCoordinates(coordinates);
     updateSelectedPlacePreview({
       title,
       address,
@@ -376,7 +469,8 @@ function LocalMap({
 
   const reverseGeocodeCoordinates = (
     coordinates: { lat: number; lng: number },
-    onResolved?: (address: string) => void
+    onResolved?: (address: string) => void,
+    options?: { preserveZoom?: boolean }
   ) => {
     const fallbackAddress = buildCoordinateLabel(coordinates);
 
@@ -392,7 +486,9 @@ function LocalMap({
         coordinates,
         loading: false
       });
-      focusOnCoordinates(coordinates);
+      focusOnCoordinates(coordinates, undefined, {
+        preserveZoom: options?.preserveZoom
+      });
       onResolved?.(fallbackAddress);
       return;
     }
@@ -406,6 +502,10 @@ function LocalMap({
         )
       },
       (results, status) => {
+        if (!isSelectionRequestCurrent(coordinates)) {
+          return;
+        }
+
         if (
           status === window.google.maps.GeocoderStatus.OK &&
           results?.length &&
@@ -419,12 +519,18 @@ function LocalMap({
             coordinates,
             loading: false
           });
-          focusOnCoordinates(coordinates);
+          focusOnCoordinates(coordinates, undefined, {
+            preserveZoom: options?.preserveZoom
+          });
           onResolved?.(resolvedAddress);
           return;
         }
 
         findNearbyPlace(coordinates, (nearbyPlace) => {
+          if (!isSelectionRequestCurrent(coordinates)) {
+            return;
+          }
+
           const resolvedAddress = nearbyPlace?.address || fallbackAddress;
           updateSelectedPlacePreview({
             title: nearbyPlace?.title || null,
@@ -432,7 +538,9 @@ function LocalMap({
             coordinates,
             loading: false
           });
-          focusOnCoordinates(coordinates);
+          focusOnCoordinates(coordinates, undefined, {
+            preserveZoom: options?.preserveZoom
+          });
           onResolved?.(resolvedAddress);
         });
       }
@@ -446,6 +554,10 @@ function LocalMap({
     const service = getPlacesService();
     if (!service || !window.google?.maps?.places) {
       resolvePlaceIdWithGeocoder(placeId, (placeResult) => {
+        if (!isSelectionRequestCurrent(coordinates)) {
+          return;
+        }
+
         if (
           !placeResult ||
           !placeResult.formatted_address ||
@@ -472,11 +584,19 @@ function LocalMap({
         fields: ['formatted_address', 'geometry', 'name', 'types', 'url']
       },
       (place, status) => {
+        if (!isSelectionRequestCurrent(coordinates)) {
+          return;
+        }
+
         if (
           status !== window.google.maps.places.PlacesServiceStatus.OK ||
           !place
         ) {
           resolvePlaceIdWithGeocoder(placeId, (placeResult) => {
+            if (!isSelectionRequestCurrent(coordinates)) {
+              return;
+            }
+
             if (
               !placeResult ||
               !placeResult.formatted_address ||
@@ -512,6 +632,7 @@ function LocalMap({
             place.name && place.name !== resolvedAddress ? place.name : null,
           address: resolvedAddress,
           coordinates: placeCoordinates,
+          requestCoordinates: coordinates,
           googleMapsUrl: place.url || null,
           viewport: place.geometry?.viewport
         });
@@ -532,9 +653,40 @@ function LocalMap({
       return;
     }
 
-    setSelectedCoordinates(selected);
-    selectedCoordinatesRef.current = selected;
-    focusOnCoordinates(selected);
+    const currentPreview = selectedPlacePreviewRef.current;
+    const shouldRefreshAddress =
+      !currentPreview ||
+      !areCoordinatesApproximatelyEqual(currentPreview.coordinates, selected);
+
+    setCurrentSelectedCoordinates(selected);
+    setSelectedPlacePreviewState((currentPreview) =>
+      currentPreview
+        ? {
+            ...currentPreview,
+            coordinates: selected,
+            address:
+              currentPreview.loading &&
+              !areCoordinatesApproximatelyEqual(
+                currentPreview.coordinates,
+                selected
+              )
+                ? buildCoordinateLabel(selected)
+                : currentPreview.address,
+            loading:
+              currentPreview.loading &&
+              !areCoordinatesApproximatelyEqual(
+                currentPreview.coordinates,
+                selected
+              )
+                ? false
+                : currentPreview.loading
+          }
+        : currentPreview
+    );
+    focusOnCoordinates(selected, undefined, { preserveZoom: true });
+    if (shouldRefreshAddress) {
+      reverseGeocodeCoordinates(selected, undefined, { preserveZoom: true });
+    }
   }, [selected, select]);
 
   useEffect(() => {
@@ -548,7 +700,7 @@ function LocalMap({
       return;
     }
 
-    setSelectedPlacePreview(null);
+    setSelectedPlacePreviewState(null);
 
     if (geocodeTimeoutRef.current) {
       clearTimeout(geocodeTimeoutRef.current);
@@ -583,7 +735,7 @@ function LocalMap({
                 }
 
                 lastHandledSearchKeyRef.current = currentSearchKey;
-                setSelectedCoordinates(coordinates);
+                setCurrentSelectedCoordinates(coordinates);
                 updateSelectedPlacePreview({
                   title: title && title !== resolvedAddress ? title : null,
                   address: resolvedAddress,
@@ -606,7 +758,7 @@ function LocalMap({
           };
 
           lastHandledSearchKeyRef.current = currentSearchKey;
-          setSelectedCoordinates(coordinates);
+          setCurrentSelectedCoordinates(coordinates);
           updateSelectedPlacePreview({
             address: bestResult.formatted_address || normalizedAddress,
             coordinates,
@@ -626,6 +778,9 @@ function LocalMap({
   }, [searchAddress, searchRequestId, select]);
 
   const defaultCenter = select ? DEFAULT_SELECT_CENTER : { lat: 0, lng: 0 };
+  const selectedMarkerPosition = selectedCoordinates ?? selected;
+  const normalizedSelectedHeading = normalizeHeading(selectedHeading);
+
   return (
     <GoogleMap
       ref={mapRef}
@@ -637,6 +792,8 @@ function LocalMap({
               lat: event.latLng.lat(),
               lng: event.latLng.lng()
             };
+            setCurrentSelectedCoordinates(placeCoordinates);
+            focusOnCoordinates(placeCoordinates);
             resolvePlaceIdSelection(event.placeId, placeCoordinates);
             return;
           }
@@ -645,7 +802,7 @@ function LocalMap({
             lat: event.latLng.lat(),
             lng: event.latLng.lng()
           };
-          setSelectedCoordinates(coordinates);
+          setCurrentSelectedCoordinates(coordinates);
           focusOnCoordinates(coordinates);
           onSelectRef.current?.(coordinates);
           reverseGeocodeCoordinates(coordinates);
@@ -720,66 +877,78 @@ function LocalMap({
       )}
       {select && (
         <>
-          {(selectedCoordinates ?? selected) && (
+          {selectedMarkerPosition && (
             <Marker
-              position={selectedCoordinates ?? selected}
-              icon={{
-                url: '/static/images/markers/red.png',
-                scaledSize: new window.google.maps.Size(25, 25)
-              }}
+              position={selectedMarkerPosition}
+              icon={getSelectedMarkerIcon(normalizedSelectedHeading)}
             />
           )}
-          {selectedPlacePreview && (
-            <InfoWindow
-              onCloseClick={() => setSelectedPlacePreview(null)}
-              position={selectedPlacePreview.coordinates}
-            >
-              <Box sx={{ maxWidth: 280 }}>
-                {selectedPlacePreview.title && (
-                  <Typography variant="subtitle1" fontWeight={700}>
-                    {selectedPlacePreview.title}
-                  </Typography>
-                )}
-                <Typography
-                  variant={selectedPlacePreview.title ? 'body1' : 'subtitle1'}
-                  fontWeight={selectedPlacePreview.title ? 400 : 700}
-                  sx={selectedPlacePreview.title ? { mt: 0.5 } : undefined}
-                >
-                  {selectedPlacePreview.loading
-                    ? 'Resolving location...'
-                    : selectedPlacePreview.address}
-                </Typography>
-                <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
-                  {selectedPlacePreview.coordinates.lat.toFixed(6)},{' '}
-                  {selectedPlacePreview.coordinates.lng.toFixed(6)}
-                </Typography>
-                {selectedPlacePreview.googleMapsUrl && (
-                  <Link
-                    href={selectedPlacePreview.googleMapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    display="inline-block"
-                    sx={{ mt: 1 }}
-                  >
-                    View on Google Maps
-                  </Link>
-                )}
-                <Button
-                  variant="contained"
-                  size="small"
-                  sx={{ mt: 1.5 }}
-                  disabled={selectedPlacePreview.loading}
-                  onClick={() => {
-                    onAddressConfirm?.(selectedPlacePreview.address);
-                    setSelectedPlacePreview(null);
-                  }}
-                >
-                  OK
-                </Button>
-              </Box>
-            </InfoWindow>
-          )}
         </>
+      )}
+      {select && selectedPlacePreview && (
+        <Box
+          onClick={(event) => event.stopPropagation()}
+          sx={{
+            position: 'absolute',
+            left: 16,
+            bottom: 16,
+            zIndex: 5,
+            width: { xs: 'calc(100% - 32px)', sm: 360 },
+            maxWidth: 'calc(100% - 32px)',
+            p: 2,
+            borderRadius: 2,
+            border: (theme) => `1px solid ${theme.palette.divider}`,
+            bgcolor: 'background.paper',
+            boxShadow: '0 18px 45px rgba(15, 23, 42, 0.18)',
+            pointerEvents: 'auto'
+          }}
+        >
+          {selectedPlacePreview.title && (
+            <Typography variant="subtitle1" fontWeight={700}>
+              {selectedPlacePreview.title}
+            </Typography>
+          )}
+          <Typography
+            variant={selectedPlacePreview.title ? 'body1' : 'subtitle1'}
+            fontWeight={selectedPlacePreview.title ? 400 : 700}
+            sx={selectedPlacePreview.title ? { mt: 0.5 } : undefined}
+          >
+            {selectedPlacePreview.loading
+              ? 'Resolving location...'
+              : selectedPlacePreview.address}
+          </Typography>
+          <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
+            {selectedPlacePreview.coordinates.lat.toFixed(6)},{' '}
+            {selectedPlacePreview.coordinates.lng.toFixed(6)}
+          </Typography>
+          {normalizedSelectedHeading !== null && (
+            <Typography variant="body2" color="text.secondary">
+              Heading: {Math.round(normalizedSelectedHeading)} deg
+            </Typography>
+          )}
+          {selectedPlacePreview.googleMapsUrl && (
+            <Link
+              href={selectedPlacePreview.googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              display="inline-block"
+              sx={{ mt: 1 }}
+            >
+              View on Google Maps
+            </Link>
+          )}
+          <Button
+            variant="contained"
+            size="small"
+            sx={{ mt: 1.5 }}
+            disabled={selectedPlacePreview.loading}
+            onClick={() => {
+              onAddressConfirm?.(selectedPlacePreview.address);
+            }}
+          >
+            OK
+          </Button>
+        </Box>
       )}
     </GoogleMap>
   );
@@ -795,6 +964,7 @@ export default function Map({
   searchAddress,
   searchRequestId,
   selected,
+  selectedHeading,
   onSelect
 }: MapProps) {
   const { apiKey } = googleMapsConfig;
@@ -802,8 +972,8 @@ export default function Map({
   return (
     <div
       style={{
-        width: dimensions.width ?? 500,
-        height: dimensions.height ?? 500
+        width: dimensions?.width ?? 500,
+        height: dimensions?.height ?? 500
       }}
     >
       <MapWrapped
@@ -814,9 +984,18 @@ export default function Map({
         searchAddress={searchAddress}
         searchRequestId={searchRequestId}
         selected={selected}
+        selectedHeading={selectedHeading}
         googleMapURL={`https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=geometry,drawing,places&key=${apiKey}`}
         loadingElement={<div style={{ height: `100%` }} />}
-        containerElement={<div style={{ height: `100%` }} />}
+        containerElement={
+          <div
+            style={{
+              height: `100%`,
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          />
+        }
         mapElement={<div style={{ height: `100%` }} />}
       />
     </div>

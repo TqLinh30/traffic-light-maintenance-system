@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
@@ -50,14 +51,17 @@ interface LocationDetailsProps {
   location: Location;
   handleOpenUpdate: () => void;
   handleOpenDelete: () => void;
+  refreshKey?: number;
 }
 export default function LocationDetails(props: LocationDetailsProps) {
-  const { location, handleOpenUpdate, handleOpenDelete } = props;
+  const { location, handleOpenUpdate, handleOpenDelete, refreshKey } = props;
   const { t }: { t: any } = useTranslation();
   const dispatch = useDispatch();
   const { getFormattedDate, uploadFiles } = useContext(CompanySettingsContext);
   const [openAddFloorPlan, setOpenAddFloorPlan] = useState<boolean>(false);
-  const [currentTab, setCurrentTab] = useState<string>('assets');
+  const [currentTab, setCurrentTab] = useState<string>(
+    location?.trafficLightEnabled ? 'trafficLight' : 'assets'
+  );
   const [trafficLightDetails, setTrafficLightDetails] =
     useState<TrafficLightPointDetailDTO | null>(null);
   const [loadingTrafficLightDetails, setLoadingTrafficLightDetails] =
@@ -78,17 +82,25 @@ export default function LocationDetails(props: LocationDetailsProps) {
   const floorPlans = floorPlansByLocation[location.id] ?? [];
   const theme = useTheme();
   const navigate = useNavigate();
+  const showTrafficLightOverview =
+    hasViewPermission(PermissionEntity.LOCATIONS) &&
+    (location?.trafficLightEnabled ||
+      loadingTrafficLightDetails ||
+      Boolean(trafficLightDetails));
   const tabs = [
-    { value: 'assets', label: t('assets') },
-    ...((loadingTrafficLightDetails || trafficLightDetails) &&
-    hasViewPermission(PermissionEntity.LOCATIONS)
-      ? [{ value: 'trafficLight', label: t('traffic_light_point') }]
-      : []),
+    {
+      value: showTrafficLightOverview ? 'trafficLight' : 'assets',
+      label: showTrafficLightOverview ? t('traffic_light_point') : t('assets')
+    },
     { value: 'files', label: t('files') },
     { value: 'workOrders', label: t('work_orders') },
     { value: 'floorPlans', label: t('floor_plans') },
     { value: 'people', label: t('people') }
   ];
+  const resolvedCurrentTab =
+    tabs.find((tab) => tab.value === currentTab)?.value ?? tabs[0]?.value;
+  const resolvedTrafficLightImageUrl =
+    trafficLightDetails?.point.locationImageUrl ?? location.image?.url ?? null;
 
   const isNotFoundApiError = (error: unknown) => {
     try {
@@ -125,6 +137,10 @@ export default function LocationDetails(props: LocationDetailsProps) {
   };
 
   useEffect(() => {
+    setCurrentTab(location?.trafficLightEnabled ? 'trafficLight' : 'assets');
+  }, [location?.id, location?.trafficLightEnabled]);
+
+  useEffect(() => {
     dispatch(getAssetsByLocation(location.id));
     dispatch(getWorkOrdersByLocation(location.id));
     dispatch(getFloorPlans(location.id));
@@ -141,7 +157,10 @@ export default function LocationDetails(props: LocationDetailsProps) {
     }
 
     setLoadingTrafficLightDetails(true);
-    api.get<TrafficLightPointDetailDTO>(`traffic-light-points/location/${location.id}`)
+    api
+      .get<TrafficLightPointDetailDTO>(
+        `traffic-light-points/location/${location.id}`
+      )
       .then((response) => {
         if (!active) {
           return;
@@ -154,7 +173,9 @@ export default function LocationDetails(props: LocationDetailsProps) {
         }
         setTrafficLightDetails(null);
         setCurrentTab((previousTab) =>
-          previousTab === 'trafficLight' ? 'assets' : previousTab
+          previousTab === 'trafficLight' && !location?.trafficLightEnabled
+            ? 'assets'
+            : previousTab
         );
         if (!isNotFoundApiError(error)) {
           console.error('Failed to load traffic light details', error);
@@ -169,7 +190,12 @@ export default function LocationDetails(props: LocationDetailsProps) {
     return () => {
       active = false;
     };
-  }, [hasViewPermission, location.id]);
+  }, [
+    hasViewPermission,
+    location.id,
+    location?.trafficLightEnabled,
+    refreshKey
+  ]);
 
   const renderAddFloorPlanModal = () => (
     <Dialog
@@ -262,7 +288,7 @@ export default function LocationDetails(props: LocationDetailsProps) {
         </Box>
       </Grid>
       <Divider />
-      {location.image && (
+      {location.image && !showTrafficLightOverview && (
         <Grid
           item
           xs={12}
@@ -280,7 +306,7 @@ export default function LocationDetails(props: LocationDetailsProps) {
       <Grid item xs={12}>
         <Tabs
           onChange={handleTabsChange}
-          value={currentTab}
+          value={resolvedCurrentTab}
           variant="scrollable"
           scrollButtons="auto"
           textColor="primary"
@@ -292,7 +318,7 @@ export default function LocationDetails(props: LocationDetailsProps) {
         </Tabs>
       </Grid>
       <Grid item xs={12}>
-        {currentTab === 'assets' && (
+        {resolvedCurrentTab === 'assets' && (
           <Box>
             {hasCreatePermission(PermissionEntity.ASSETS) && (
               <Box display="flex" justifyContent="right">
@@ -330,7 +356,7 @@ export default function LocationDetails(props: LocationDetailsProps) {
             )}
           </Box>
         )}
-        {currentTab === 'trafficLight' && (
+        {resolvedCurrentTab === 'trafficLight' && (
           <Box>
             {loadingTrafficLightDetails ? (
               <Stack
@@ -341,14 +367,19 @@ export default function LocationDetails(props: LocationDetailsProps) {
               >
                 <CircularProgress />
               </Stack>
+            ) : trafficLightDetails ? (
+              <TrafficLightPointPanel
+                details={trafficLightDetails}
+                locationImageUrl={resolvedTrafficLightImageUrl}
+              />
             ) : (
-              trafficLightDetails && (
-                <TrafficLightPointPanel details={trafficLightDetails} />
-              )
+              <Alert severity="info">
+                This location does not have traffic-light detail yet.
+              </Alert>
             )}
           </Box>
         )}
-        {currentTab === 'workOrders' && (
+        {resolvedCurrentTab === 'workOrders' && (
           <Box>
             {hasCreatePermission(PermissionEntity.WORK_ORDERS) && (
               <Box display="flex" justifyContent="right">
@@ -384,7 +415,7 @@ export default function LocationDetails(props: LocationDetailsProps) {
             )}
           </Box>
         )}
-        {currentTab === 'files' && (
+        {resolvedCurrentTab === 'files' && (
           <Box>
             {hasCreatePermission(PermissionEntity.FILES) &&
               hasFeature(PlanFeature.FILE) && (
@@ -422,7 +453,7 @@ export default function LocationDetails(props: LocationDetailsProps) {
             )}
           </Box>
         )}
-        {currentTab === 'floorPlans' && (
+        {resolvedCurrentTab === 'floorPlans' && (
           <Box>
             {hasEditPermission(PermissionEntity.LOCATIONS, location) && (
               <Box display="flex" justifyContent="right">
@@ -477,7 +508,7 @@ export default function LocationDetails(props: LocationDetailsProps) {
             )}
           </Box>
         )}
-        {currentTab === 'people' && (
+        {resolvedCurrentTab === 'people' && (
           <Grid container>
             {!!location.workers.length && (
               <Grid item xs={12} lg={6}>

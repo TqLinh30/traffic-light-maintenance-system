@@ -1,6 +1,7 @@
 package com.grash.service;
 
 import com.grash.dto.AssetMiniDTO;
+import com.grash.dto.LocationPatchDTO;
 import com.grash.dto.trafficLight.TrafficLightMapPointDTO;
 import com.grash.dto.trafficLight.TrafficLightPointDetailDTO;
 import com.grash.dto.trafficLight.TrafficLightPointPublicDTO;
@@ -10,6 +11,7 @@ import com.grash.dto.trafficLight.TrafficLightQrResolveDTO;
 import com.grash.dto.PreventiveMaintenanceShowDTO;
 import com.grash.dto.workOrder.WorkOrderMiniDTO;
 import com.grash.exception.CustomException;
+import com.grash.factory.StorageServiceFactory;
 import com.grash.mapper.PreventiveMaintenanceMapper;
 import com.grash.mapper.WorkOrderMapper;
 import com.grash.model.Asset;
@@ -64,6 +66,7 @@ public class TrafficLightPointService {
     private final WorkOrderRepository workOrderRepository;
     private final EntityManager entityManager;
     private final CustomSequenceService customSequenceService;
+    private final StorageServiceFactory storageServiceFactory;
     private final PreventiveMaintenanceMapper preventiveMaintenanceMapper;
     private final WorkOrderMapper workOrderMapper;
 
@@ -188,6 +191,44 @@ public class TrafficLightPointService {
         return trafficLightPointRepository.existsByLocation_Id(locationId);
     }
 
+    @Transactional
+    public void deletePointForLocation(Long locationId) {
+        trafficLightPointRepository.findByLocation_Id(locationId).ifPresent(point -> {
+            qrTagRepository.deleteByTrafficLightPoint_Id(point.getId());
+            qrTagRepository.flush();
+            trafficLightPointRepository.delete(point);
+            trafficLightPointRepository.flush();
+        });
+    }
+
+    @Transactional
+    public TrafficLightPoint syncLocationMetadata(TrafficLightPoint point, LocationPatchDTO dto,
+                                                  boolean overwriteMissingValues) {
+        if (point == null || dto == null) {
+            return point;
+        }
+
+        boolean changed = false;
+        if (overwriteMissingValues || dto.getInstallationDate() != null) {
+            point.setInstallationDate(dto.getInstallationDate());
+            changed = true;
+        }
+        if (overwriteMissingValues || dto.getExpectedWarrantyDate() != null) {
+            point.setExpectedWarrantyDate(dto.getExpectedWarrantyDate());
+            changed = true;
+        }
+        if (overwriteMissingValues || dto.getMaintenanceHistory() != null) {
+            point.setMaintenanceHistory(normalizeMaintenanceHistory(dto.getMaintenanceHistory()));
+            changed = true;
+        }
+
+        if (!changed) {
+            return point;
+        }
+
+        return trafficLightPointRepository.saveAndFlush(point);
+    }
+
     TrafficLightPointPublicDTO toPublicDto(TrafficLightPoint point) {
         List<WorkOrder> relatedWorkOrders = getRelatedWorkOrders(point);
         List<PreventiveMaintenance> relatedPreventiveMaintenances = getRelatedPreventiveMaintenances(point);
@@ -213,6 +254,7 @@ public class TrafficLightPointService {
         dto.setPoleCode(point.getPoleCode());
         dto.setName(point.getLocation().getName());
         dto.setAddress(point.getLocation().getAddress());
+        dto.setLocationImageUrl(buildLocationImageUrl(point.getLocation()));
         dto.setLatitude(point.getLocation().getLatitude());
         dto.setLongitude(point.getLocation().getLongitude());
         dto.setDistrict(point.getDistrict());
@@ -223,6 +265,8 @@ public class TrafficLightPointService {
         dto.setTrafficLightType(point.getTrafficLightType());
         dto.setControllerType(point.getControllerType());
         dto.setInstallationDate(point.getInstallationDate());
+        dto.setExpectedWarrantyDate(point.getExpectedWarrantyDate());
+        dto.setMaintenanceHistory(point.getMaintenanceHistory());
         dto.setMaintenanceCycleDays(point.getMaintenanceCycleDays());
         dto.setLastInspectionAt(lastInspectionAt);
         dto.setLastMaintenanceAt(lastMaintenanceAt);
@@ -305,6 +349,14 @@ public class TrafficLightPointService {
         point.setPoleCode(generatePoleCode(location));
         point.setActive(true);
         return trafficLightPointRepository.saveAndFlush(point);
+    }
+
+    private String buildLocationImageUrl(Location location) {
+        if (location == null || location.getImage() == null) {
+            return null;
+        }
+
+        return storageServiceFactory.getStorageService().generateSignedUrl(location.getImage().getPath(), 60 * 3);
     }
 
     private QrTag ensureActiveQrTag(TrafficLightPoint point) {
@@ -518,5 +570,13 @@ public class TrafficLightPointService {
             case MEDIUM -> Priority.MEDIUM;
             case HIGH, CRITICAL -> Priority.HIGH;
         };
+    }
+
+    private String normalizeMaintenanceHistory(String maintenanceHistory) {
+        if (maintenanceHistory == null) {
+            return null;
+        }
+        String normalizedMaintenanceHistory = maintenanceHistory.trim();
+        return normalizedMaintenanceHistory.isEmpty() ? null : normalizedMaintenanceHistory;
     }
 }

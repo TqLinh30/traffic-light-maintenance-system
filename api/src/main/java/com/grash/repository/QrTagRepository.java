@@ -17,6 +17,8 @@ public interface QrTagRepository extends JpaRepository<QrTag, Long> {
 
     Optional<QrTag> findTopByTrafficLightPoint_IdOrderByVersionDesc(Long trafficLightPointId);
 
+    void deleteByTrafficLightPoint_Id(Long trafficLightPointId);
+
     @Query("SELECT q FROM QrTag q " +
             "JOIN FETCH q.trafficLightPoint tp " +
             "JOIN FETCH tp.location " +

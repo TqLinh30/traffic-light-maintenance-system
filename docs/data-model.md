@@ -85,6 +85,8 @@
   - `trafficLightType`
   - `controllerType`
   - `installationDate`
+  - `expectedWarrantyDate`
+  - `maintenanceHistory`
   - `maintenanceCycleDays`
   - `isActive`
 - Canonical fields kept on `Location`:
@@ -175,6 +177,8 @@
 | `trafficLightType` | `TrafficLightPoint.trafficLightType` |
 | `controllerType` | `TrafficLightPoint.controllerType` |
 | `installationDate` | `TrafficLightPoint.installationDate` |
+| `expectedWarrantyDate` | `TrafficLightPoint.expectedWarrantyDate` |
+| `maintenanceHistory` | `TrafficLightPoint.maintenanceHistory` |
 | `maintenanceCycleDays` | `TrafficLightPoint.maintenanceCycleDays` |
 | `lastInspectionAt` | derived from point-related PM/work order history |
 | `lastMaintenanceAt` | derived from completed maintenance work orders for point or main asset |
@@ -325,12 +329,19 @@
   - `LocationService` now auto-provisions a `TrafficLightPoint` if one does not yet exist
   - the default `poleCode` is generated from `Location.customId`
   - an active `QrTag` is created automatically if the point has no active tag
+  - the location create or update workflow can now persist `installationDate`, `expectedWarrantyDate`, and manual `maintenanceHistory` notes onto that point
   - mobile create and edit flows now expose the same `trafficLightEnabled` marker so provisioning behavior stays aligned across web and mobile
 
 ### Disable Behavior
 - If a location already has a `TrafficLightPoint`, attempts to turn `trafficLightEnabled` off through the update flow are ignored.
 - Rationale:
   - avoids orphaning point history, QR access, PM context, and map behavior after the point already exists
+
+### Delete Behavior
+- Deleting a traffic-light-enabled `Location` now removes the associated `QrTag` records and `TrafficLightPoint` before deleting the `Location`.
+- The traffic-light foreign keys are also migrated to `ON DELETE CASCADE` so database-level deletion remains consistent with the service behavior.
+- Rationale:
+  - traffic-light point and QR rows are extension data for the location anchor; they should not block an operator from deleting a location they are allowed to delete.
 
 ### TrafficLightPreventiveMaintenanceSummaryDTO
 - Purpose:

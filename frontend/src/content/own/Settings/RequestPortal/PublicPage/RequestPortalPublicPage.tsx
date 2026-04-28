@@ -412,7 +412,7 @@ export default function RequestPortalPublicPage() {
                   window.open(brandConfig.website, '_blank');
                 }}
               >
-                Powered by {brandConfig.name}
+                Traffic Signal Care
               </Typography>
               {languageSwitcher}
             </Stack>

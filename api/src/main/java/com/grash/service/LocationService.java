@@ -2,17 +2,19 @@ package com.grash.service;
 
 import com.grash.advancedsearch.SearchCriteria;
 import com.grash.advancedsearch.SpecificationBuilder;
+import com.grash.dto.LocationCreateDTO;
 import com.grash.dto.LocationPatchDTO;
 import com.grash.dto.LocationShowDTO;
 import com.grash.dto.imports.LocationImportDTO;
-import com.grash.dto.license.LicenseEntitlement;
 import com.grash.exception.CustomException;
+import com.grash.factory.StorageServiceFactory;
 import com.grash.mapper.LocationMapper;
 import com.grash.model.*;
 import com.grash.model.enums.NotificationType;
 import com.grash.model.enums.RoleType;
 import com.grash.repository.LocationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,14 +25,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.Base64;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static com.grash.utils.Consts.usageBasedLicenseLimits;
 
 @Service
 @RequiredArgsConstructor
 public class LocationService {
+    private static final String GOOGLE_STREET_VIEW_IMAGE_URL_PREFIX =
+            "https://maps.googleapis.com/maps/api/streetview?";
+
     private final LocationRepository locationRepository;
     private final UserService userService;
     private final CompanyService companyService;
@@ -42,17 +52,23 @@ public class LocationService {
     private final TeamService teamService;
     private final EntityManager em;
     private final FileService fileService;
+    private final StorageServiceFactory storageServiceFactory;
     private final CustomSequenceService customSequenceService;
-    private final LicenseService licenseService;
     private final TrafficLightPointService trafficLightPointService;
 
+    @Value("${frontend.url:}")
+    private String frontendUrl;
+
     @Transactional
-    public Location create(Location location, Company company) {
-        checkUsageBasedLimit(company);
+    public Location create(LocationCreateDTO locationDto, Company company) {
+        Location location = locationMapper.updateLocation(new Location(), locationDto);
+        location.setCompany(company);
         location.setCustomId(getLocationNumber(company));
 
         Location savedLocation = locationRepository.saveAndFlush(location);
-        trafficLightPointService.ensurePointAndActiveQrTagForLocation(savedLocation);
+        TrafficLightPoint point = trafficLightPointService.ensurePointAndActiveQrTagForLocation(savedLocation);
+        trafficLightPointService.syncLocationMetadata(point, locationDto, true);
+        attachGeneratedImage(savedLocation, locationDto, false);
         em.refresh(savedLocation);
         return savedLocation;
     }
@@ -67,27 +83,21 @@ public class LocationService {
                 patchedLocation.setTrafficLightEnabled(true);
                 patchedLocation = locationRepository.saveAndFlush(patchedLocation);
             }
-            trafficLightPointService.ensurePointAndActiveQrTagForLocation(patchedLocation);
+            TrafficLightPoint point = trafficLightPointService.ensurePointAndActiveQrTagForLocation(patchedLocation);
+            trafficLightPointService.syncLocationMetadata(point, location, false);
+            attachGeneratedImage(patchedLocation, location, true);
             em.refresh(patchedLocation);
             return patchedLocation;
         } else throw new CustomException("Not found", HttpStatus.NOT_FOUND);
-    }
-
-    private void checkUsageBasedLimit(Company company) {
-        Integer threshold = usageBasedLicenseLimits.get(LicenseEntitlement.UNLIMITED_LOCATIONS);
-        if (!licenseService.hasEntitlement(LicenseEntitlement.UNLIMITED_LOCATIONS)
-                && locationRepository.hasMoreThan(company.getId(), threshold.longValue() - 1
-        ))
-            throw new CustomException("You need a license to add a new location. Free Limit reached: " + threshold,
-                    HttpStatus.FORBIDDEN);
-
     }
 
     public Collection<Location> getAll() {
         return locationRepository.findAll();
     }
 
+    @Transactional
     public void delete(Long id) {
+        trafficLightPointService.deletePointForLocation(id);
         locationRepository.deleteById(id);
     }
 
@@ -156,7 +166,6 @@ public class LocationService {
     }
 
     public void importLocation(Location location, LocationImportDTO dto, Company company, Map<String, Location> locationsByName) {
-        checkUsageBasedLimit(company);
         Long companyId = company.getId();
         location.setName(dto.getName());
         location.setAddress(dto.getAddress());
@@ -277,6 +286,91 @@ public class LocationService {
 
     public boolean hasChildren(Long locationId) {
         return locationRepository.countByParentLocation_Id(locationId) > 0;
+    }
+
+    private void attachGeneratedImage(Location location, LocationPatchDTO locationDto, boolean replaceExistingImage) {
+        if ((!replaceExistingImage && location.getImage() != null)
+                || !hasGeneratedImagePayload(locationDto)) {
+            return;
+        }
+
+        try {
+            byte[] imageBytes = resolveGeneratedImageBytes(locationDto);
+            if (imageBytes.length == 0) {
+                return;
+            }
+            String fileName = Optional.ofNullable(locationDto.getGeneratedImageFileName())
+                    .filter(value -> !value.isBlank())
+                    .orElse("traffic-light-location.jpg");
+            String contentType = Optional.ofNullable(locationDto.getGeneratedImageContentType())
+                    .filter(value -> !value.isBlank())
+                    .orElse("image/jpeg");
+            String filePath = storageServiceFactory.getStorageService().upload(
+                    imageBytes,
+                    fileName,
+                    contentType,
+                    "company " + location.getCompany().getId()
+            );
+            File generatedImage = new File(fileName, filePath, com.grash.model.enums.FileType.IMAGE, null, true);
+            generatedImage = fileService.create(generatedImage);
+            location.setImage(generatedImage);
+            locationRepository.saveAndFlush(location);
+        } catch (IllegalArgumentException exception) {
+            throw new CustomException("Invalid generated location image payload", HttpStatus.BAD_REQUEST);
+        } catch (CustomException exception) {
+            // Best effort: location creation should still succeed when auto image generation fails.
+        }
+    }
+
+    private boolean hasGeneratedImagePayload(LocationPatchDTO locationDto) {
+        return (locationDto.getGeneratedImageBase64() != null && !locationDto.getGeneratedImageBase64().isBlank())
+                || (locationDto.getGeneratedImageSourceUrl() != null
+                && !locationDto.getGeneratedImageSourceUrl().isBlank());
+    }
+
+    private byte[] resolveGeneratedImageBytes(LocationPatchDTO locationDto) {
+        if (locationDto.getGeneratedImageBase64() != null && !locationDto.getGeneratedImageBase64().isBlank()) {
+            return Base64.getDecoder().decode(locationDto.getGeneratedImageBase64());
+        }
+
+        return downloadGeneratedImage(locationDto.getGeneratedImageSourceUrl());
+    }
+
+    private byte[] downloadGeneratedImage(String sourceUrl) {
+        if (sourceUrl == null || !sourceUrl.startsWith(GOOGLE_STREET_VIEW_IMAGE_URL_PREFIX)) {
+            return new byte[0];
+        }
+
+        try {
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(URI.create(sourceUrl))
+                    .timeout(Duration.ofSeconds(12))
+                    .GET()
+                    .header("Accept", "image/*")
+                    .header("User-Agent", "SignalCare/1.0");
+            Optional.ofNullable(frontendUrl)
+                    .filter(value -> !value.isBlank())
+                    .ifPresent(value -> requestBuilder.header("Referer", value));
+
+            HttpResponse<byte[]> response = HttpClient.newHttpClient().send(
+                    requestBuilder.build(),
+                    HttpResponse.BodyHandlers.ofByteArray()
+            );
+            String contentType = response.headers().firstValue("content-type").orElse("");
+            if (response.statusCode() < 200
+                    || response.statusCode() >= 300
+                    || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")
+                    || response.body() == null) {
+                return new byte[0];
+            }
+            return response.body();
+        } catch (IOException exception) {
+            return new byte[0];
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return new byte[0];
+        } catch (IllegalArgumentException exception) {
+            return new byte[0];
+        }
     }
 }
 

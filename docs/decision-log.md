@@ -578,3 +578,214 @@
 - Rationale:
   - the previous sidebar ignored the lighter sidebar palette already defined in the theme schemes and forced a dark translucent background with white text, which no longer matched the refreshed `SignalCare` branding direction.
   - reusing `theme.sidebar.*` is the smallest safe path because it keeps the color system centralized and updates desktop sidebar, mobile drawer, menu states, and footer actions together.
+
+### D-066
+- Decision:
+  - replace the generic web `Add Location` modal with a traffic-light-first create flow that always shows the map picker, adds a Street View preview, falls back to the current Street View image when no upload is provided, and submits `trafficLightEnabled=true` automatically.
+- Status:
+  - accepted
+- Rationale:
+  - in this deployment, every newly added location is intended to represent a traffic-light point, so making the map optional and requiring a manual traffic-light toggle adds unnecessary steps and increases the chance of incomplete provisioning.
+  - keeping the change scoped to the create modal only is the smallest safe UX adjustment because it improves the new-location workflow without broadening risk across the existing shared edit form.
+
+### D-067
+- Decision:
+  - keep the selected web map coordinates stable after the popup `OK` action and use an interactive Google Street View panorama, rather than a static image, for the traffic-light create flow.
+- Status:
+  - accepted
+- Rationale:
+  - the popup `OK` action is meant to confirm the chosen point label, not to run a second search that may shift the saved location away from the user-selected traffic-light position.
+  - traffic-light operators need to inspect the immediate surroundings of the selected point to identify the correct signal head or pole, so a panorama with native Street View pan and navigation controls is a better fit than a static snapshot.
+
+### D-068
+- Decision:
+  - keep installation date, expected warranty date, and manual repair or maintenance notes on `TrafficLightPoint`, while continuing to keep `Location` as the canonical source of name, address, and coordinates.
+- Status:
+  - accepted
+- Rationale:
+  - the new fields are pole-specific lifecycle metadata, not generic place metadata, so storing them on `TrafficLightPoint` preserves the thin-extension model already accepted for this project.
+  - reusing the location create or update workflow to write those values keeps the operator UX simple without widening `Location` into the main traffic-light domain entity.
+
+### D-069
+- Decision:
+  - replace the assets-first location detail tab with a traffic-light information surface for traffic-light-enabled locations, while keeping the old assets list only as a fallback for non-traffic-light locations.
+- Status:
+  - accepted
+- Rationale:
+  - in this deployment, each managed location is intended to represent one traffic-light pole, so showing an empty asset list as the first detail surface is misleading.
+  - keeping the asset tab as a fallback path for non-traffic-light locations minimizes regression risk for any older generic Atlas data that may still exist in the same environment.
+
+### D-070
+- Decision:
+  - treat the auto-generated Street View fallback image for new traffic-light locations as a system-generated location image that is attached during the backend create flow, instead of uploading it through the normal file-attachment endpoint.
+- Status:
+  - accepted
+- Rationale:
+  - the normal `/files/upload` path is license-gated for manual file attachments, which caused confusing red errors during location creation even though the location itself still succeeded.
+  - the Street View fallback image is part of the core traffic-light location workflow, so it should degrade independently from the optional manual file-attachment product capability.
+
+### D-071
+- Decision:
+  - treat local runtime resync as a required verification step whenever the live dev backend is still serving older traffic-light schema or create-flow behavior than the current checked-out source.
+- Status:
+  - accepted
+- Rationale:
+  - on 2026-04-25, the checked-out source and `api/target/classes` already contained the traffic-light metadata migration plus the backend auto-image create flow, but the running Spring Boot process on `localhost:8080` had not been restarted since before those changes and was still connected to the active PostgreSQL instance on `localhost:5434`.
+  - querying the live database showed that `test04` had been created under that stale runtime, so its `image_id`, `installationDate`, `expectedWarrantyDate`, and `maintenanceHistory` were never persisted; restarting the backend and letting Liquibase apply the pending change set is the smallest safe way to align runtime behavior with the repository state before further UI QA.
+
+### D-072
+- Decision:
+  - use the dedicated traffic-light location form for traffic-light location edits as well as creation, while keeping the old generic edit form only as a fallback for any legacy non-traffic-light locations that may still exist in the environment.
+- Status:
+  - accepted
+- Rationale:
+  - the add flow already became the source of truth for map-first traffic-light location capture, so leaving edit on the old shared form would keep operators from repairing missing coordinates, images, or lifecycle fields on existing poles such as `test04`.
+  - reusing the same dedicated form keeps create and edit aligned while limiting regression risk for older generic Atlas rows that are not part of the traffic-light operating model.
+
+### D-073
+- Decision:
+  - expose a signed `locationImageUrl` on the public traffic-light point DTO and upgrade the public QR landing page to show pole image and lifecycle metadata directly on the point summary surface.
+- Status:
+  - accepted
+- Rationale:
+  - the public QR page already resolved a point-centric DTO with status and maintenance context, but it still lacked the pole image and key lifecycle fields needed for a practical field view.
+  - reusing the existing public point DTO is the smallest safe path because it enriches the established QR resolve contract without introducing a separate public detail endpoint.
+
+### D-074
+- Decision:
+  - use a dedicated mobile traffic-light location form with an in-app keyless OpenStreetMap picker for coordinates and external Google Maps or Street View launchers, while keeping the old generic mobile edit form only as a fallback for legacy non-traffic-light locations.
+- Status:
+  - accepted
+- Rationale:
+  - the existing mobile generic location form never handled `coordinates`, lifecycle metadata, or a pole-first detail workflow, so reusing it for the new traffic-light requirements would keep mobile out of sync with the accepted web and backend model.
+  - the current mobile environment does not have a reliable Google Maps JavaScript key path or a safe way to capture Street View imagery automatically, so a keyless in-app map picker plus external Street View launchers is the smallest practical way to give mobile operators point selection and field verification without blocking the rest of the pole-first flow.
+
+### D-075
+- Decision:
+  - keep `react-native-image-viewing@0.2.2` for now, but patch it locally with `patch-package` to add a missing `ImageItem.web.js` shim instead of replacing the image viewer immediately.
+- Status:
+  - accepted
+- Rationale:
+  - the web bundling failure came from a vendor packaging gap: the library imported `./components/ImageItem/ImageItem` but shipped only `ImageItem.android.js` and `ImageItem.ios.js`, so Expo web had no resolvable target.
+  - adding a tiny web shim is the smallest safe fix because it restores mobile web bundling without changing the app-level `Tasks` image-viewer logic or risking a broader viewer replacement in the middle of current traffic-light QA work.
+
+### D-076
+- Decision:
+  - prefer Google Maps JS plus inline Street View inside the mobile traffic-light location form whenever a `GOOGLE_KEY` is configured, but keep the earlier `Leaflet + OpenStreetMap + Nominatim` path as a fallback when the mobile runtime has no key.
+- Status:
+  - accepted
+- Rationale:
+  - the earlier keyless mobile picker was the smallest safe parity step when no reliable Google key path existed, but once the operator has a valid key the project should move closer to the accepted web workflow so map search, map controls, and Street View behavior feel consistent across platforms.
+  - keeping the OpenStreetMap branch avoids breaking mobile create or edit entirely in local environments where `GOOGLE_KEY` is still unset, while exposing the key through Expo runtime config makes the Google path easier to activate and verify without adding native dependencies in this pass.
+
+### D-077
+- Decision:
+  - make the web traffic-light location detail tab and traffic-light edit modal prefer `point.locationImageUrl` from the dedicated traffic-light detail DTO over `location.image.url` from the broader location payload, while keeping the older location image as a fallback only.
+- Status:
+  - accepted
+- Rationale:
+  - the public QR page already used `point.locationImageUrl`, and the backend detail endpoint now returns a fresh signed pole-image URL specifically for the traffic-light surface.
+  - continuing to read `location.image.url` in the web detail and edit flows risked showing no image or an expired signed URL even when the dedicated traffic-light detail fetch had the correct image available.
+
+### D-078
+- Decision:
+  - use `http://127.0.0.1:9000` instead of `http://localhost:9000` as the local development `PUBLIC_MINIO_ENDPOINT` default for browser-facing signed image URLs.
+- Status:
+  - accepted
+- Rationale:
+  - direct database inspection proved rows such as `test07` had a valid `image_id`, and direct MinIO object reads proved the JPEG object still existed in `atlas-bucket`.
+  - after the UI fix, standard HTTP clients on the local Windows setup still reproduced a connection reset for presigned URLs signed against `localhost`, while the same object loaded successfully when signed against `127.0.0.1`, so the smallest safe fix is to change the local public endpoint host rather than rewriting the traffic-light image UI again.
+
+### D-079
+- Decision:
+  - treat the live Street View panorama position as a valid source of truth for the currently selected traffic-light point during web create or edit, and push `position_changed` updates back into the form coordinates and map selection without reloading the panorama.
+- Status:
+  - accepted
+- Rationale:
+  - traffic-light operators may need to follow Street View arrows along the road to reach the exact pole they intend to save, so leaving the map marker behind at the original click point creates a mismatch between what the operator sees and what the form will persist.
+  - feeding Street View movement back into the form is the smallest safe way to keep map, coordinates, and panorama aligned, but it also requires loop protection so the panorama does not immediately reset itself after each coordinate update.
+
+### D-080
+- Decision:
+  - when the web traffic-light create or edit flow falls back to a generated Street View image, derive that image from the operator's current panorama position plus heading, pitch, and zoom instead of the initial default Street View framing.
+- Status:
+  - accepted
+- Rationale:
+  - the fallback image is meant to represent the actual pole view the operator confirmed, so keeping the original default Street View angle would capture stale visual context after the operator pans, zooms, or navigates along the road.
+  - storing a lightweight Street View capture state in the form is the smallest safe way to reuse the existing static-image generation path without trying to snapshot the live panorama DOM directly.
+
+### D-081
+- Decision:
+  - keep the latest Street View callback props in mutable refs inside the dedicated web traffic-light form, instead of depending directly on freshly recreated Formik callback closures inside the panorama effect.
+- Status:
+  - accepted
+- Rationale:
+  - the dedicated `TrafficLightLocationCreateForm` passes inline callbacks such as `onCaptureChange={(capture) => formik.setFieldValue('streetViewCapture', capture)}` into `StreetViewPreview`.
+  - once the panorama effect began calling `onCaptureChange(null)` during mount or error states, depending on those inline callbacks directly caused the effect to rerun on every Formik update and crash the add or edit modal with `Maximum update depth exceeded`.
+  - callback refs preserve the latest Formik writers without widening the effect dependency list, which is the smallest safe fix because it removes the recursive mount loop while keeping real Street View updates functional.
+
+### D-082
+- Decision:
+  - keep the user-selected traffic-light coordinates as the canonical saved pole point, and track the moving Street View panorama position as a separate camera marker instead of writing `StreetViewPanorama.getPosition()` back into `Location.latitude` and `Location.longitude`.
+- Status:
+  - superseded by D-083
+- Rationale:
+  - Google Street View movement reports the current panorama camera location, which is often snapped to roadway capture points rather than the nearby pole or object the operator is inspecting, so persisting that moving camera position made the saved traffic-light marker drift far from the real pole.
+  - a separate camera marker plus panorama overlay for the selected pole is the smallest safe correction because it keeps the pole coordinates stable for the data model while still letting the map and fallback image follow the operator's live Street View viewpoint.
+
+### D-083
+- Decision:
+  - replace the dual-marker Street View map design with a Google Maps-style single selected marker: the red map marker follows `StreetViewPanorama.getPosition()`, the popup coordinates follow that marker, and the marker displays the current Street View heading.
+- Status:
+  - accepted
+- Rationale:
+  - operator QA rejected the blue camera marker plus distance connector because it made the active Street View position appear separate from the selected location and added visual noise.
+  - matching Google Maps' mental model is more useful for this form: as the operator moves in Street View, the selected marker represents the current panorama position and orientation, while the existing loop guard prevents those coordinate writes from reloading or blanking the modal.
+
+### D-084
+- Decision:
+  - render the select-mode map address preview as a persistent lower-left panel instead of a closeable Google `InfoWindow`, and re-run reverse geocoding whenever the current selected coordinates are replaced by Street View movement.
+- Status:
+  - accepted
+- Rationale:
+  - once Street View can move the selected marker, the original map-click geocode result may correctly be ignored as stale, but the replacement Street View coordinate still needs its own address lookup so the UI does not remain as raw latitude and longitude.
+  - a closeable popup made the address-confirm action easy to lose; a persistent panel keeps `OK` available for filling the form address after click, search, or Street View navigation without forcing another map click.
+
+### D-085
+- Decision:
+  - remove the old usage-based `UNLIMITED_LOCATIONS` quota from location creation and import, and make traffic-light location deletion explicitly remove its QR and point records before deleting the underlying `Location`.
+- Status:
+  - accepted
+- Rationale:
+  - this deployment is a traffic-light maintenance system, so the inherited free-tier cap of 10 generic CMMS locations conflicts with real city-scale point inventory needs.
+  - each traffic-light location now auto-provisions `TrafficLightPoint` and `QrTag` records; deleting the `Location` must clean up those traffic-light extension rows or rely on database cascade, otherwise the foreign keys can block deletion.
+
+### D-086
+- Decision:
+  - keep the web location list, hierarchy list, mini list, and traffic-light map read models synchronized after create, edit, and delete operations; allow traffic-light edit saves to replace an existing location image with the current generated Street View image when no manual image is uploaded.
+- Status:
+  - accepted
+- Rationale:
+  - the web location table renders from `locationsHierarchy`, so updating only the flat `locations` slice after delete or edit left stale rows visible until a manual refresh.
+  - traffic-light operators expect the current Street View framing to become the pole image on edit, not only when a location has no image yet.
+  - the smallest safe path is to update Redux hierarchy state immediately, trigger a server refresh after mutations, and let the backend replace the image only when the edit payload includes a generated image.
+
+### D-087
+- Decision:
+  - stop relying on browser `fetch()` to convert Google Street View Static images into base64; send the Street View Static URL to the backend and let the backend download and persist the generated location image.
+- Status:
+  - accepted
+- Rationale:
+  - browser-side fetches to Google image endpoints can fail from CORS or network policy even when the Street View panorama itself works, leaving the location save successful but the pole image unchanged.
+  - the backend already owns storage writes, so downloading the restricted Google Street View image server-side keeps the generated-image flow out of the manual file-upload path and avoids confusing post-save `Failed to fetch` snackbars.
+  - the backend only accepts generated image URLs that match the Google Street View Static endpoint prefix to avoid turning the location update API into a generic remote fetch surface.
+
+### D-088
+- Decision:
+  - normalize a local MinIO public endpoint configured as `http://localhost:9000` to `http://127.0.0.1:9000` before creating the backend MinIO signing client.
+- Status:
+  - accepted
+- Rationale:
+  - live database and MinIO inspection confirmed new traffic-light locations had persisted `image_id` values and real image objects, but the public QR DTO still issued signed URLs whose host was `localhost`.
+  - on this Windows/Docker local setup, presigned URLs using `localhost:9000` can reset the HTTP connection while equivalent URLs signed for `127.0.0.1:9000` load correctly.
+  - normalizing inside `MinioService` protects the local runtime even when a terminal or stale environment still provides `PUBLIC_MINIO_ENDPOINT=http://localhost:9000`.

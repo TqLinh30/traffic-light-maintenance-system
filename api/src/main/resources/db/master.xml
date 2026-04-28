@@ -194,4 +194,8 @@
              relativeToChangelogFile="true"/>
     <include file="changelog/2026_04_14_1776160000_location_traffic_light_enabled.xml"
              relativeToChangelogFile="true"/>
+    <include file="changelog/2026_04_25_1777100000_traffic_light_point_metadata.xml"
+             relativeToChangelogFile="true"/>
+    <include file="changelog/2026_04_28_1777370000_traffic_light_delete_cascade.xml"
+             relativeToChangelogFile="true"/>
 </databaseChangeLog>

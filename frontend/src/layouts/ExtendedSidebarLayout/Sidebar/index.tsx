@@ -137,7 +137,7 @@ function Sidebar() {
                     <Typography
                       sx={{
                         cursor: 'pointer',
-                        mt: 0.75,
+                        mt: 1.5,
                         display: 'block',
                         textAlign: 'center',
                         color: theme.sidebar.textColor,
@@ -150,7 +150,7 @@ function Sidebar() {
                         window.open('https://www.intel-loop.com/', '_blank');
                       }}
                     >
-                      Powered by Intelloop
+                      Traffic Signal Care
                     </Typography>
                   )}
                 </Box>

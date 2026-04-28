@@ -1,7 +1,4 @@
 import { RootStackScreenProps } from '../../types';
-import { View } from '../../components/Themed';
-import Form from '../../components/form';
-import * as Yup from 'yup';
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useContext } from 'react';
@@ -9,10 +6,12 @@ import { CompanySettingsContext } from '../../contexts/CompanySettingsContext';
 import { useDispatch } from '../../store';
 import { CustomSnackBarContext } from '../../contexts/CustomSnackBarContext';
 import { getImageAndFiles } from '../../utils/overall';
-import useAuth from '../../hooks/useAuth';
 import { addLocation, getLocationChildren } from '../../slices/location';
 import { getErrorMessage } from '../../utils/api';
-import { formatLocationValues, getLocationFields } from '../../utils/fields';
+import TrafficLightLocationForm, {
+  TrafficLightLocationFormValues
+} from './TrafficLightLocationForm';
+import { View } from '../../components/Themed';
 
 export default function CreateLocationScreen({
   navigation,
@@ -20,7 +19,6 @@ export default function CreateLocationScreen({
 }: RootStackScreenProps<'AddLocation'>) {
   const { t } = useTranslation();
   const { uploadFiles } = useContext(CompanySettingsContext);
-  const { getFilteredFields } = useAuth();
   const { showSnackBar } = useContext(CustomSnackBarContext);
   const dispatch = useDispatch();
   const onCreationSuccess = () => {
@@ -30,31 +28,43 @@ export default function CreateLocationScreen({
   const onCreationFailure = (err) =>
     showSnackBar(getErrorMessage(err, t('location_create_failure')), 'error');
 
-  const shape = {
-    name: Yup.string().required(t('required_location_name'))
-  };
-
   return (
     <View style={styles.container}>
-      <Form
-        fields={getFilteredFields(getLocationFields(t))}
-        validation={Yup.object().shape(shape)}
-        navigation={navigation}
+      <TrafficLightLocationForm
+        initialValues={{
+          name: '',
+          address: '',
+          coordinates: null,
+          image: null,
+          installationDate: null,
+          expectedWarrantyDate: null,
+          maintenanceHistory: ''
+        }}
         submitText={t('create_location')}
-        values={{ trafficLightEnabled: false }}
-        onChange={({ field, e }) => {}}
-        onSubmit={async (values) => {
-          let formattedValues = formatLocationValues(values);
+        onSubmit={async (values: TrafficLightLocationFormValues) => {
+          let formattedValues = {
+            name: values.name.trim(),
+            address: values.address.trim(),
+            latitude: values.coordinates?.lat ?? null,
+            longitude: values.coordinates?.lng ?? null,
+            trafficLightEnabled: true,
+            installationDate: values.installationDate,
+            expectedWarrantyDate: values.expectedWarrantyDate,
+            maintenanceHistory: values.maintenanceHistory?.trim() || null,
+            image: null,
+            files: []
+          };
+
           try {
             const uploadedFiles = await uploadFiles(
-              formattedValues.files,
-              formattedValues.image
+              [],
+              Array.isArray(values.image) ? values.image : []
             );
             const imageAndFiles = getImageAndFiles(uploadedFiles);
             formattedValues = {
               ...formattedValues,
               image: imageAndFiles.image,
-              files: imageAndFiles.files
+              files: imageAndFiles.files ?? []
             };
             await dispatch(addLocation(formattedValues));
             onCreationSuccess();

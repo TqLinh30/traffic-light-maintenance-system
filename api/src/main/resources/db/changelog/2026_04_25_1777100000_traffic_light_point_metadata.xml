@@ -1,0 +1,13 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="2026_04_25_traffic_light_point_metadata_001" author="OpenAI">
+        <addColumn tableName="traffic_light_point">
+            <column name="expected_warranty_date" type="TIMESTAMP"/>
+            <column name="maintenance_history" type="varchar(4000)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

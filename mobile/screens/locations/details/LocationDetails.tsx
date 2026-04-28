@@ -18,9 +18,32 @@ import ListField from '../../../components/ListField';
 import BasicField from '../../../components/BasicField';
 import LocationTrafficLightPanel from './LocationTrafficLightPanel';
 
-export default function LocationDetails({ location }: { location: Location }) {
+export default function LocationDetails({
+  location,
+  navigation
+}: {
+  location: Location;
+  navigation: any;
+}) {
   const { t } = useTranslation();
   const theme = useTheme();
+
+  if (location?.trafficLightEnabled) {
+    return (
+      <ScrollView
+        style={{
+          ...styles.container,
+          backgroundColor: theme.colors.background
+        }}
+      >
+        <LocationTrafficLightPanel
+          location={location}
+          navigation={navigation}
+        />
+      </ScrollView>
+    );
+  }
+
   const fieldsToRender: {
     label: string;
     value: string | number;
@@ -64,7 +87,6 @@ export default function LocationDetails({ location }: { location: Location }) {
         getHref={(team: Team) => getTeamUrl(team.id)}
         getValueLabel={(team: Team) => team.name}
       />
-      <LocationTrafficLightPanel location={location} />
     </ScrollView>
   );
 }

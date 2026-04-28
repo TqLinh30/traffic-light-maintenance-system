@@ -1,6 +1,7 @@
 package com.grash.controller;
 
 import com.grash.advancedsearch.SearchCriteria;
+import com.grash.dto.LocationCreateDTO;
 import com.grash.dto.LocationMiniDTO;
 import com.grash.dto.LocationPatchDTO;
 import com.grash.dto.LocationShowDTO;
@@ -135,7 +136,7 @@ public class LocationController {
 
     @PostMapping("")
     @PreAuthorize("hasRole('ROLE_CLIENT')")
-    LocationShowDTO create(@Valid @RequestBody Location locationReq,
+    LocationShowDTO create(@Valid @RequestBody LocationCreateDTO locationReq,
                            HttpServletRequest req) {
         OwnUser user = userService.whoami(req);
         if (user.getRole().getCreatePermissions().contains(PermissionEntity.LOCATIONS)) {

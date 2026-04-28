@@ -48,6 +48,18 @@ const slice = createSlice({
     ) {
       const { location } = action.payload;
       state.locations = [...state.locations, location];
+      const alreadyInHierarchy = state.locationsHierarchy.some(
+        (existingLocation) => existingLocation.id === location.id
+      );
+      if (!alreadyInHierarchy && !location.parentLocation) {
+        state.locationsHierarchy = [
+          ...state.locationsHierarchy,
+          {
+            ...location,
+            hierarchy: [location.id]
+          }
+        ];
+      }
     },
     editLocation(
       state: LocationState,
@@ -62,16 +74,91 @@ const slice = createSlice({
       } else {
         state.locations[locationIndex] = location;
       }
+      state.locationsHierarchy = state.locationsHierarchy.map(
+        (existingLocation) => {
+          if (existingLocation.id !== location.id) {
+            return existingLocation;
+          }
+
+          return {
+            ...existingLocation,
+            ...location,
+            hierarchy: existingLocation.hierarchy,
+            childrenFetched: existingLocation.childrenFetched,
+            hasChildren:
+              (location as LocationRow).hasChildren ??
+              existingLocation.hasChildren
+          };
+        }
+      );
+      state.locationsMini = state.locationsMini.map((existingLocation) =>
+        existingLocation.id === location.id
+          ? {
+              ...existingLocation,
+              name: location.name,
+              address: location.address,
+              customId: location.customId,
+              parentId:
+                location.parentLocation?.id ?? existingLocation.parentId
+            }
+          : existingLocation
+      );
     },
     deleteLocation(
       state: LocationState,
       action: PayloadAction<{ id: number }>
     ) {
       const { id } = action.payload;
-      const locationIndex = state.locations.findIndex(
-        (location) => location.id === id
+      const deletedIds = new Set<number>([id]);
+      let foundNestedLocation = true;
+
+      while (foundNestedLocation) {
+        foundNestedLocation = false;
+        for (const location of state.locations) {
+          const parentId = location.parentLocation?.id;
+          if (
+            parentId &&
+            deletedIds.has(parentId) &&
+            !deletedIds.has(location.id)
+          ) {
+            deletedIds.add(location.id);
+            foundNestedLocation = true;
+          }
+        }
+        for (const location of state.locationsHierarchy) {
+          const belongsToDeletedBranch = location.hierarchy?.some(
+            (hierarchyId) => deletedIds.has(hierarchyId)
+          );
+          if (belongsToDeletedBranch && !deletedIds.has(location.id)) {
+            deletedIds.add(location.id);
+            foundNestedLocation = true;
+          }
+        }
+        for (const location of state.locationsMini) {
+          if (
+            location.parentId &&
+            deletedIds.has(location.parentId) &&
+            !deletedIds.has(location.id)
+          ) {
+            deletedIds.add(location.id);
+            foundNestedLocation = true;
+          }
+        }
+      }
+
+      state.locations = state.locations.filter(
+        (location) => !deletedIds.has(location.id)
       );
-      state.locations.splice(locationIndex, 1);
+      state.locationsHierarchy = state.locationsHierarchy.filter(
+        (location) =>
+          !deletedIds.has(location.id) &&
+          !location.hierarchy?.some((hierarchyId) =>
+            deletedIds.has(hierarchyId)
+          )
+      );
+      state.locationsMini = state.locationsMini.filter(
+        (location) => !deletedIds.has(location.id)
+      );
     },
     getLocationChildren(
       state: LocationState,

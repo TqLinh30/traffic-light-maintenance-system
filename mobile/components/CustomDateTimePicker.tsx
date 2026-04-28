@@ -11,7 +11,7 @@ export default function CustomDateTimePicker({
   label
 }: {
   onChange: (date: Date) => void;
-  value: Date;
+  value: Date | null;
   label: string;
 }) {
   const theme = useTheme();
